@@ -61,6 +61,7 @@ router.post("/loginbyphone", async (req, res) => {
 // Student signup
 router.post("/signup", async (req, res) => {
     try {
+        console.log("Received data:", req.body);
         const studentData = req.body;
         const newStudent = await studentService.createStudent(studentData);
 
@@ -128,5 +129,38 @@ router.delete("/deletestudent/:id", authenticateToken, async (req, res) => {
         res.status(500).json({ message: "Error deleting student", error: error.message });
     }
 });
+
+
+
+
+//EMAIL SERVICE FOR STUDENTS
+
+const emailService = require("../services/email_service");
+
+//sending bulk email route
+router.post("/send-bulk-email", authenticateToken, async (req, res) => {
+    try {
+      const students = await studentService.getAllStudents();
+      
+      if (!students.length) {
+        return res.status(404).json({ message: "Oops No students found" });
+      }
+  
+      const emails = students.map(s => s.email);
+      const { subject, htmlContent } = req.body;
+  
+      const result = await emailService.sendBulkEmail(emails, subject, htmlContent);
+      
+      res.status(200).json({
+        message: result.success ? "Emails processed" : "Email sending partially failed",
+        details: result
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Email processing failed",
+        error: error.message
+      });
+    }
+  });
 
 module.exports = router;

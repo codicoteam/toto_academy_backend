@@ -1,0 +1,33 @@
+// studentController.js
+const emailService = require('../services/emailService');
+
+exports.sendBulkEmail = async (req, res) => {
+  try {
+    const { recipients, subject, htmlContent } = req.body;
+
+    // Validate input
+    if (!recipients || !Array.isArray(recipients)) {
+      return res.status(400).json({ error: "Recipients must be registered" });
+    }
+    if (!subject || !htmlContent) {
+      return res.status(400).json({ error: "Subject and content are required" });
+    }
+
+    // Process emails
+    const results = await emailService.sendBulkEmail(recipients, subject, htmlContent);
+    
+    res.json({
+      success: true,
+      sentCount: results.filter(r => r.status === 'email sent').length,
+      failedCount: results.filter(r => r.status === ' sending failed').length,
+      results
+    });
+    
+  } catch (error) {
+    console.error('Bulk email error:', error);
+    res.status(500).json({ 
+      message: "Email processing failed",
+      error: error.message 
+    });
+  }
+};
