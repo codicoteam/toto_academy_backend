@@ -152,7 +152,7 @@ router.post("/send-bulk-email", authenticateToken, async (req, res) => {
       const result = await emailService.sendBulkEmail(emails, subject, htmlContent);
       
       res.status(200).json({
-        message: result.success ? "Emails processed" : "Email sending partially failed",
+        message: result.success ? "Emails processed" : "Emails partially processed",
         details: result
       });
     } catch (error) {
