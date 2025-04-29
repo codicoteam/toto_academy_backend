@@ -18,8 +18,13 @@ class EmailService {
   async sendBulkEmail(recipients, subject, htmlContent) {
     const results = [];
     
-    for (const email of recipients) {
+    for (const [email,index]  of recipients) {
       try {
+        if (index > 0)
+        {
+          await this.delay(3000); // im delaying sending of emals with 3 seconds
+        }
+
         await this.transporter.sendMail({
           to: email,
           subject,
