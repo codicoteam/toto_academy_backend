@@ -3,13 +3,10 @@ const Admin = require('../models/admin_model'); // Adjust the path as per your p
 // Service to create a new admin
 const createAdmin = async (adminData) => {
     try {
-        // Check if email already exists
         const existingAdmin = await Admin.findOne({ email: adminData.email });
         if (existingAdmin) {
             throw new Error('Email already exists');
         }
-
-        // Create and save a new admin
         const newAdmin = new Admin(adminData);
         await newAdmin.save();
         return newAdmin;
@@ -18,7 +15,6 @@ const createAdmin = async (adminData) => {
     }
 };
 
-// Service to get all admins
 const getAllAdmins = async () => {
     try {
         return await Admin.find();
@@ -27,7 +23,6 @@ const getAllAdmins = async () => {
     }
 };
 
-// Service to fetch an admin by email
 const getAdminByEmail = async (email) => {
     try {
         return await Admin.findOne({ email });

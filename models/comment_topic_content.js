@@ -1,15 +1,15 @@
 const mongoose = require("mongoose");
 
-const contentCommentSchema = new mongoose.Schema(
+const contentTopicContentSchema = new mongoose.Schema(
   {
     student_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Student",
       required: true,
     },
-    content_system_id: {
+    topic_content_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Content",
+      ref: "topic_content",
       required: true,
     },
     comment_on_content: {
@@ -26,4 +26,4 @@ const contentCommentSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("ContentComment", contentCommentSchema);
+module.exports = mongoose.model("contentTopicContent", contentTopicContentSchema);

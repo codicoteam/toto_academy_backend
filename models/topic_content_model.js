@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
-
-const contentSchema = new mongoose.Schema(
+const topic_content = new mongoose.Schema(
   {
     title: {
       type: String,
@@ -11,28 +10,24 @@ const contentSchema = new mongoose.Schema(
       required: true,
     },
     file_path: {
-      type: String,
+      type: [String], // Array of strings
       required: true,
     },
+
     file_type: {
       type: String,
       enum: ["video", "audio", "document"],
       required: true,
     },
-    subject: {
+    Topic: {
       type: mongoose.Schema.Types.ObjectId, // Reference to Subject model
-      ref: "Subject", // The model to use for population
+      ref: "Topic", // The model to use for population
       required: true,
     },
-    level: {
-      type: String,
-      enum: ["O Level", "A Level", "Form 1", "Form 2", "Form 3", "Form 4"],
-      required: true,
-    }
   },
   {
     timestamps: true,
   }
 );
 
-module.exports = mongoose.model("Content", contentSchema);
+module.exports = mongoose.model("topic_content", topic_content);
