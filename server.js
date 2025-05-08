@@ -12,6 +12,7 @@ const topicRouter = require("./routers/topic_in_subject.js");
 const topicContentRouter = require("./routers/topic_content_router.js");
 const comment_topic_content_route = require("./routers/comment_topic_content_router.js");
 const community_route = require("./routers/community_router.js");
+const message_community_route = require("./routers/message_community_router.js");
 
 const dbUrl = process.env.DATABASE_URL;
 const Port = process.env.PORT || 3000;
@@ -35,6 +36,7 @@ app.use("/api/v1/topic_in_subject",topicRouter );
 app.use("/api/v1/topic_content",topicContentRouter );
 app.use("/api/v1/comment_topic_content",comment_topic_content_route );
 app.use("/api/v1/community_service",community_route );
+app.use("/api/v1/message_community_route",message_community_route );
 
 app.listen(Port, () => {
     console.log("The server is running at port:", Port);
