@@ -56,10 +56,63 @@ const deleteWallet = async (id) => {
   }
 };
 
+// Deposit money into wallet
+const depositToWallet = async (studentId, depositData) => {
+    try {
+      const wallet = await Wallet.findOne({ student: studentId });
+      if (!wallet) throw new Error("Wallet not found");
+  
+      const transaction = {
+        ...depositData,
+        type: "deposit",
+        status: depositData.status || "completed",
+        date: new Date(),
+      };
+  
+      wallet.deposits.push(transaction);
+      wallet.balance += transaction.amount;
+      wallet.lastUpdated = new Date();
+  
+      await wallet.save();
+      return wallet;
+    } catch (error) {
+      throw new Error(error.message);
+    }
+  };
+  // Withdraw money from wallet
+  const withdrawFromWallet = async (studentId, withdrawalData) => {
+    try {
+      const wallet = await Wallet.findOne({ student: studentId });
+      if (!wallet) throw new Error("Wallet not found");
+  
+      if (wallet.balance < withdrawalData.amount) {
+        throw new Error("Insufficient balance");
+      }
+  
+      const transaction = {
+        ...withdrawalData,
+        type: "withdrawal",
+        status: withdrawalData.status || "completed",
+        date: new Date(),
+      };
+  
+      wallet.withdrawals.push(transaction);
+      wallet.balance -= transaction.amount;
+      wallet.lastUpdated = new Date();
+  
+      await wallet.save();
+      return wallet;
+    } catch (error) {
+      throw new Error(error.message);
+    }
+  };
+
 module.exports = {
   createWallet,
   getAllWallets,
   getWalletByStudentId,
   updateWallet,
   deleteWallet,
+  depositToWallet,
+  withdrawFromWallet,
 };

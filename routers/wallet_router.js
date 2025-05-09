@@ -55,4 +55,26 @@ router.delete("/delete/:id", authenticateToken, async (req, res) => {
   }
 });
 
+// deposit money into wallet
+router.post("/deposit/:studentId", authenticateToken, async (req, res) => {
+    try {
+      const wallet = await walletService.depositToWallet(req.params.studentId, req.body);
+      res.status(200).json({ message: "Deposit successful", data: wallet });
+    } catch (error) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+
+// withdraw money from wallet
+router.post("/withdraw/:studentId", authenticateToken, async (req, res) => {
+    try {
+      const wallet = await walletService.withdrawFromWallet(req.params.studentId, req.body);
+      res.status(200).json({ message: "Withdrawal successful", data: wallet });
+    } catch (error) {
+      const code = error.message === "Insufficient balance" ? 403 : 400;
+      res.status(code).json({ message: error.message });
+    }
+  });
+
 module.exports = router;
