@@ -77,4 +77,15 @@ router.post("/withdraw/:studentId", authenticateToken, async (req, res) => {
     }
   });
 
+// transfer money between wallets// Get wallet dashboard summary
+router.get("/dashboard", authenticateToken, async (req, res) => {
+  try {
+    const data = await walletService.getWalletDashboardData();
+    res.status(200).json({ message: "Dashboard data retrieved", data });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
 module.exports = router;

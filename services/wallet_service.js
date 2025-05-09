@@ -107,6 +107,36 @@ const depositToWallet = async (studentId, depositData) => {
     }
   };
 
+  // Get wallet dashboard data
+const getWalletDashboardData = async () => {
+  try {
+    const wallets = await Wallet.find().populate('student');
+
+    let totalDeposits = 0;
+    let totalWithdrawals = 0;
+
+    wallets.forEach((wallet) => {
+      totalDeposits += wallet.deposits.reduce((sum, tx) => sum + tx.amount, 0);
+      totalWithdrawals += wallet.withdrawals.reduce((sum, tx) => sum + tx.amount, 0);
+    });
+
+    // Sort wallets by lastUpdated and pick 3
+    const latestWallets = wallets
+      .sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated))
+      .slice(0, 3);
+
+    return {
+      totalDeposits,
+      totalWithdrawals,
+      latestWallets,
+    };
+
+  } catch (error) {
+    throw new Error("Failed to get wallet dashboard data: " + error.message);
+  }
+};
+
+
 module.exports = {
   createWallet,
   getAllWallets,
@@ -115,4 +145,5 @@ module.exports = {
   deleteWallet,
   depositToWallet,
   withdrawFromWallet,
+  getWalletDashboardData
 };
