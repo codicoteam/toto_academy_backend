@@ -61,10 +61,25 @@ const deleteTopic = async (id) => {
   }
 };
 
+// Get topics by subject ID
+const getTopicsBySubjectId = async (subjectId) => {
+  try {
+    const topics = await Topic.find({ subject: subjectId }).populate("subject");
+    if (!topics || topics.length === 0) {
+      throw new Error("No topics found for this subject");
+    }
+    return topics;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
 module.exports = {
   createTopic,
   getAllTopics,
   getTopicById,
   updateTopic,
   deleteTopic,
+  getTopicsBySubjectId
 };
