@@ -1,11 +1,13 @@
-const Wallet = require('../models/wallet_model');
+const Wallet = require("../models/wallet_model");
 
 // Create wallet for a student
 const createWallet = async (walletData) => {
   try {
-    const existingWallet = await Wallet.findOne({ student: walletData.student });
+    const existingWallet = await Wallet.findOne({
+      student: walletData.student,
+    });
     if (existingWallet) {
-      throw new Error('Wallet already exists for this student');
+      throw new Error("Wallet already exists for this student");
     }
 
     const newWallet = new Wallet(walletData);
@@ -19,7 +21,7 @@ const createWallet = async (walletData) => {
 // Get all wallets
 const getAllWallets = async () => {
   try {
-    return await Wallet.find().populate('student');
+    return await Wallet.find().populate("student");
   } catch (error) {
     throw new Error(error.message);
   }
@@ -28,7 +30,7 @@ const getAllWallets = async () => {
 // Get wallet by student ID
 const getWalletByStudentId = async (studentId) => {
   try {
-    return await Wallet.findOne({ student: studentId }).populate('student');
+    return await Wallet.findOne({ student: studentId }).populate("student");
   } catch (error) {
     throw new Error(error.message);
   }
@@ -37,8 +39,10 @@ const getWalletByStudentId = async (studentId) => {
 // Update wallet balance or transactions
 const updateWallet = async (id, updateData) => {
   try {
-    const updatedWallet = await Wallet.findByIdAndUpdate(id, updateData, { new: true });
-    if (!updatedWallet) throw new Error('Wallet not found');
+    const updatedWallet = await Wallet.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
+    if (!updatedWallet) throw new Error("Wallet not found");
     return updatedWallet;
   } catch (error) {
     throw new Error(error.message);
@@ -49,7 +53,7 @@ const updateWallet = async (id, updateData) => {
 const deleteWallet = async (id) => {
   try {
     const deletedWallet = await Wallet.findByIdAndDelete(id);
-    if (!deletedWallet) throw new Error('Wallet not found');
+    if (!deletedWallet) throw new Error("Wallet not found");
     return deletedWallet;
   } catch (error) {
     throw new Error(error.message);
@@ -58,69 +62,79 @@ const deleteWallet = async (id) => {
 
 // Deposit money into wallet
 const depositToWallet = async (studentId, depositData) => {
-    try {
-      const wallet = await Wallet.findOne({ student: studentId });
-      if (!wallet) throw new Error("Wallet not found");
-  
-      const transaction = {
-        ...depositData,
-        type: "deposit",
-        status: depositData.status || "completed",
-        date: new Date(),
-      };
-  
-      wallet.deposits.push(transaction);
-      wallet.balance += transaction.amount;
-      wallet.lastUpdated = new Date();
-  
-      await wallet.save();
-      return wallet;
-    } catch (error) {
-      throw new Error(error.message);
-    }
-  };
-  // Withdraw money from wallet
-  const withdrawFromWallet = async (studentId, withdrawalData) => {
-    try {
-      const wallet = await Wallet.findOne({ student: studentId });
-      if (!wallet) throw new Error("Wallet not found");
-  
-      if (wallet.balance < withdrawalData.amount) {
-        throw new Error("Insufficient balance");
-      }
-  
-      const transaction = {
-        ...withdrawalData,
-        type: "withdrawal",
-        status: withdrawalData.status || "completed",
-        date: new Date(),
-      };
-  
-      wallet.withdrawals.push(transaction);
-      wallet.balance -= transaction.amount;
-      wallet.lastUpdated = new Date();
-  
-      await wallet.save();
-      return wallet;
-    } catch (error) {
-      throw new Error(error.message);
-    }
-  };
+  try {
+    const wallet = await Wallet.findOne({ student: studentId });
+    if (!wallet) throw new Error("Wallet not found");
 
-  // Get wallet dashboard data
+    const transaction = {
+      ...depositData,
+      type: "deposit",
+      status: depositData.status || "completed",
+      date: new Date(),
+    };
+
+    wallet.deposits.push(transaction);
+    wallet.balance += transaction.amount;
+    wallet.lastUpdated = new Date();
+
+    await wallet.save();
+    return wallet;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+// Withdraw money from wallet
+const withdrawFromWallet = async (studentId, withdrawalData) => {
+  try {
+    const wallet = await Wallet.findOne({ student: studentId });
+    if (!wallet) throw new Error("Wallet not found");
+
+    if (wallet.balance < withdrawalData.amount) {
+      throw new Error("Insufficient balance");
+    }
+
+    const transaction = {
+      ...withdrawalData,
+      type: "withdrawal",
+      status: withdrawalData.status || "completed",
+      date: new Date(),
+    };
+
+    wallet.withdrawals.push(transaction);
+    wallet.balance -= transaction.amount;
+    wallet.lastUpdated = new Date();
+
+    await wallet.save();
+    return wallet;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+// Get wallet dashboard data
 const getWalletDashboardData = async () => {
   try {
-    const wallets = await Wallet.find().populate('student');
+    const wallets = await Wallet.find().populate("student");
 
     let totalDeposits = 0;
     let totalWithdrawals = 0;
+    let totalTransactions = 0;
 
     wallets.forEach((wallet) => {
-      totalDeposits += wallet.deposits.reduce((sum, tx) => sum + tx.amount, 0);
-      totalWithdrawals += wallet.withdrawals.reduce((sum, tx) => sum + tx.amount, 0);
+      const depositSum = wallet.deposits.reduce(
+        (sum, tx) => sum + tx.amount,
+        0
+      );
+      const withdrawalSum = wallet.withdrawals.reduce(
+        (sum, tx) => sum + tx.amount,
+        0
+      );
+
+      totalDeposits += depositSum;
+      totalWithdrawals += withdrawalSum;
+      totalTransactions += wallet.deposits.length + wallet.withdrawals.length;
     });
 
-    // Sort wallets by lastUpdated and pick 3
     const latestWallets = wallets
       .sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated))
       .slice(0, 3);
@@ -128,14 +142,14 @@ const getWalletDashboardData = async () => {
     return {
       totalDeposits,
       totalWithdrawals,
+      totalTransactions,
+      walletCount: wallets.length,
       latestWallets,
     };
-
   } catch (error) {
     throw new Error("Failed to get wallet dashboard data: " + error.message);
   }
 };
-
 
 module.exports = {
   createWallet,
@@ -145,5 +159,5 @@ module.exports = {
   deleteWallet,
   depositToWallet,
   withdrawFromWallet,
-  getWalletDashboardData
+  getWalletDashboardData,
 };
