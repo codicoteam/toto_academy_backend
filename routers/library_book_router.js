@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const bookService = require("../services/book_service");
+const bookService = require("../services/library_book_service");
 const { authenticateToken } = require("../middlewares/auth");
 
 // Create new book
