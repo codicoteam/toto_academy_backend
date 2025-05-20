@@ -13,7 +13,7 @@ const walletTransactionSchema = new mongoose.Schema({
   method: {
     type: String,
     required: true,
-    enum: ["bank_transfer", "card", "crypto", "other"],
+    enum: ["bank_transfer", "ecocash" , "inn bucks", "other"],
   },
   reference: {
     type: String,
