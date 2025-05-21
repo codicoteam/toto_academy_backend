@@ -16,6 +16,7 @@ const message_community_route = require("./routers/message_community_router.js")
 const walletRouter = require("./routers/wallet_router.js");
 const examRouter = require("./routers/exam_router.js");
 const libraryBookRouter = require("./routers/library_book_router.js");
+const paymentRouter = require("./routers/payment_router.js");
 
 const dbUrl = process.env.DATABASE_URL;
 const Port = process.env.PORT || 3000;
@@ -43,6 +44,7 @@ app.use("/api/v1/message_community_route",message_community_route );
 app.use("/api/wallet", walletRouter);
 app.use("/api/v1/exam", examRouter);
 app.use("/api/v1/library_book", libraryBookRouter);
+app.use("/api/v1/payment", paymentRouter);
 
 
 app.listen(Port, () => {

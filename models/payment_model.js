@@ -45,5 +45,4 @@ const PaymentModel = mongoose.model("Payment", paymentSchema);
 
 module.exports = PaymentModel;
 // This model can be used to create, read, update, and delete payment records in your MongoDB database.
-// Crud 5, 
-//
+// Crud 5,
