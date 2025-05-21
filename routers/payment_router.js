@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const PaymentService = require("../services/payment_services");
+const PaymentService = require("../services/payment_service");
 
 // Create a new payment
-router.post("/", async (req, res) => {
+router.post("/createPayment", async (req, res) => {
   try {
     const payment = await PaymentService.createPayment(req.body);
     res.status(201).json(payment);
@@ -13,7 +13,7 @@ router.post("/", async (req, res) => {
 });
 
 // Get all payments
-router.get("/", async (req, res) => {
+router.get("/getAllPayments", async (req, res) => {
   try {
     const payments = await PaymentService.getAllPayments();
     res.json(payments);
@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
 });
 
 // Get a specific payment
-router.get("/:id", async (req, res) => {
+router.get("/getPaymentById/:id", async (req, res) => {
   try {
     const payment = await PaymentService.getPaymentById(req.params.id);
     if (!payment) {
@@ -36,7 +36,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // Update payment status
-router.patch("/:id/status", async (req, res) => {
+router.patch("/paymentStatus/:id/status", async (req, res) => {
   try {
     const updatedPayment = await PaymentService.updatePaymentStatus(
       req.params.id,
@@ -52,7 +52,7 @@ router.patch("/:id/status", async (req, res) => {
 });
 
 // Delete a payment
-router.delete("/:id", async (req, res) => {
+router.delete("/delete/:id", async (req, res) => {
   try {
     const deletedPayment = await PaymentService.deletePayment(req.params.id);
     if (!deletedPayment) {
