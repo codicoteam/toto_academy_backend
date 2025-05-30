@@ -1,8 +1,7 @@
 const PayCourse = require("../models/payment_model");
-const Paynow = require("paynow");
-
+const { Paynow } = require("paynow");
 // Initialize Paynow
-const paynow = new Paynow("20035", "57832f6f-bd15-4877-81be-c8e30e390a88");
+const paynow = new  Paynow("20035", "57832f6f-bd15-4877-81be-c8e30e390a88");
 
 // Create a new payment
 const makePayment = async (paymentData) => {
