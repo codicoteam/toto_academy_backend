@@ -52,6 +52,3 @@ const examSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("Exam", examSchema);
-// crud
-// add question per exam
-// remove question  

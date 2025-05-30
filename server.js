@@ -17,6 +17,7 @@ const walletRouter = require("./routers/wallet_router.js");
 const examRouter = require("./routers/exam_router.js");
 const libraryBookRouter = require("./routers/library_book_router.js");
 const paymentRouter = require("./routers/payment_router.js");
+const recordExam = require("./routers/record_exam_router.js");
 
 const dbUrl = process.env.DATABASE_URL;
 const Port = process.env.PORT || 3000;
@@ -45,6 +46,7 @@ app.use("/api/wallet", walletRouter);
 app.use("/api/v1/exam", examRouter);
 app.use("/api/v1/library_book", libraryBookRouter);
 app.use("/api/v1/payment", paymentRouter);
+app.use("/api/v1/record_exam", recordExam);
 
 
 app.listen(Port, () => {
