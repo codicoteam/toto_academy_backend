@@ -116,6 +116,25 @@ const deleteRecordExamsByExamId = async (examId) => {
   }
 };
 
+const findOneLastByStudentIdAndExamId = async (studentId, examId) => {
+  try {
+    const recordExam = await RecordExam.findOne({ 
+      studentId, 
+      ExamId: examId 
+    }).sort({ createdAt: -1 }); // Sort by createdAt in descending order to get the most recent
+    
+    if (!recordExam) {
+      throw new Error("No record exam found for this student and exam combination");
+    }
+    return recordExam;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
+
+
 module.exports = {
   createRecordExam,
   getAllRecordExams,
@@ -126,4 +145,5 @@ module.exports = {
   deleteRecordExamsByStudentId,
   getRecordExamsByExamId,
   deleteRecordExamsByExamId,
+  findOneLastByStudentIdAndExamId
 };

@@ -157,4 +157,23 @@ router.delete("/exam/:examId", authenticateToken, async (req, res) => {
   }
 });
 
+
+router.get("/last/:studentId/:examId", authenticateToken, async (req, res) => {
+  try {
+    const recordExam = await recordExamService.findOneLastByStudentIdAndExamId(
+      req.params.studentId,
+      req.params.examId
+    );
+    res.status(200).json({ 
+      message: "Last record exam retrieved successfully", 
+      data: recordExam 
+    });
+  } catch (error) {
+    res.status(404).json({ 
+      message: error.message.includes("found") ? error.message : "Failed to retrieve record exam",
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;
