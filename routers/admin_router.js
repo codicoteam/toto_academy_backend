@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
 // Login route to authenticate admin and return JWT
+
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -15,24 +16,25 @@ router.post("/login", async (req, res) => {
       return res.status(404).json({ message: "Admin not found" });
     }
 
-    // Validate password
     const isPasswordValid = await bcrypt.compare(password, admin.password);
-    console.log("Entered Password:", password);
-    console.log("Stored Hashed Password:", admin.email);
-    console.log("Password Validity:", isPasswordValid);
-
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { id: admin._id, email: admin.email },
-      "toto_academy_2025", // Replace 'your_jwt_secret' with a secure key
+      "toto_academy_2025", // Replace with env var in production
       { expiresIn: "8h" }
     );
 
-    res.status(200).json({ message: "Login successful", token });
+    // Exclude password from returned admin object
+    const { password: _, ...adminWithoutPassword } = admin.toObject();
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      admin: adminWithoutPassword,
+    });
   } catch (error) {
     res.status(500).json({ message: "Login failed", error: error.message });
   }

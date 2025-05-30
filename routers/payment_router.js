@@ -3,27 +3,17 @@ const router = express.Router();
 const PaymentService = require("../services/payment_service");
 
 // Create a new payment
-router.post("/createPayment", async (req, res) => {
+router.post("/payments", async (req, res) => {
   try {
-    const payment = await PaymentService.createPayment(req.body);
-    res.status(201).json(payment);
+    const result = await PaymentService.makePayment(req.body);
+    res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 });
 
-// Get all payments
-router.get("/getAllPayments", async (req, res) => {
-  try {
-    const payments = await PaymentService.getAllPayments();
-    res.json(payments);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Get a specific payment
-router.get("/getPaymentById/:id", async (req, res) => {
+// Get payment by ID
+router.get("/payments/:id", async (req, res) => {
   try {
     const payment = await PaymentService.getPaymentById(req.params.id);
     if (!payment) {
@@ -35,43 +25,78 @@ router.get("/getPaymentById/:id", async (req, res) => {
   }
 });
 
-// Update payment status
-router.patch("/paymentStatus/:id/status", async (req, res) => {
+// Get payments by student ID
+router.get("/students/:studentId/payments", async (req, res) => {
   try {
-    const updatedPayment = await PaymentService.updatePaymentStatus(
+    const { page = 1, limit = 10 } = req.query;
+    const result = await PaymentService.getPaymentsByStudentId(
+      req.params.studentId,
+      parseInt(page),
+      parseInt(limit)
+    );
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get payments by status
+router.get("/payments/status/:status", async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const result = await PaymentService.getPaymentsByStatus(
+      req.params.status,
+      parseInt(page),
+      parseInt(limit)
+    );
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get recent payments
+router.get("/payments/recent", async (req, res) => {
+  try {
+    const limit = req.query.limit || 5;
+    const payments = await PaymentService.getRecentPayments(parseInt(limit));
+    res.json(payments);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get payment statistics
+router.get("/payments/stats", async (req, res) => {
+  try {
+    const stats = await PaymentService.getPaymentStats();
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update payment status
+router.patch("/payments/:id/status", async (req, res) => {
+  try {
+    const result = await PaymentService.updatePaymentStatus(
       req.params.id,
       req.body.status
     );
-    if (!updatedPayment) {
-      return res.status(404).json({ message: "Payment not found" });
-    }
-    res.json(updatedPayment);
+    res.json(result);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 });
 
-// Delete a payment
-router.delete("/delete/:id", async (req, res) => {
+// Handle Paynow webhook
+router.post("/payments/webhook", async (req, res) => {
   try {
-    const deletedPayment = await PaymentService.deletePayment(req.params.id);
-    if (!deletedPayment) {
-      return res.status(404).json({ message: "Payment not found" });
-    }
-    res.json({ message: "Payment deleted successfully" });
+    const { pollUrl, status } = req.body;
+    const result = await PaymentService.findByPollUrlAndUpdate(pollUrl, status);
+    res.json(result);
   } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Additional routes can be added here
-// Example: Get payments by status
-router.get("/status/:status", async (req, res) => {
-  try {
-    const payments = await PaymentService.getPaymentsByStatus(req.params.status);
-    res.json(payments);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 });
 
