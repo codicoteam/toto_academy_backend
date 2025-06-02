@@ -1,4 +1,23 @@
 const mongoose = require("mongoose");
+
+
+const lessonInfo = new mongoose.Schema({
+  text: {
+    type: Number,
+    required: true,
+  },
+  audio: {
+    type: String,
+    required: true,
+  },
+  video: {
+    type: String,
+    default: "no content",
+  },
+});
+
+
+
 const topic_content = new mongoose.Schema(
   {
     title: {
@@ -9,9 +28,10 @@ const topic_content = new mongoose.Schema(
       type: String,
       required: true,
     },
+    lesson: [lessonInfo],
     file_path: {
       type: [String], // Array of strings
-      required: true,
+      required: false,
     },
 
     file_type: {
