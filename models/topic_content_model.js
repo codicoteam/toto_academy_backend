@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 
 const lessonInfo = new mongoose.Schema({
   text: {
-    type: Number,
+    type: String,
     required: true,
   },
   audio: {
