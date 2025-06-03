@@ -63,24 +63,57 @@ router.post("/signup", async (req, res) => {
     try {
         console.log("Received data:", req.body);
         const studentData = req.body;
+        
+        // Create the new student
         const newStudent = await studentService.createStudent(studentData);
 
-        const token = jwt.sign(
-            { id: newStudent._id, email: newStudent.email },
-            "toto_academy_2025",
-            { expiresIn: "8h" }
-        );
+        // Generate and send OTP
+        try {
+            const otpResult = await studentService.generateAndSendOTP(newStudent.phone_number);
+            
+            // Generate JWT token
+            const token = jwt.sign(
+                { id: newStudent._id, email: newStudent.email },
+                "toto_academy_2025",
+                { expiresIn: "8h" }
+            );
 
-        res.status(201).json({
-            message: "Student registered successfully",
-            data: newStudent,
-            token,
-        });
+            res.status(201).json({
+                message: "Student registered successfully. OTP sent to your phone number. Please verify.",
+                data: newStudent,
+                token,
+                otpInfo: {
+                    success: otpResult.success,
+                    message: otpResult.message
+                }
+            });
+        } catch (otpError) {
+            // If OTP sending fails, still return success but with a warning
+            const token = jwt.sign(
+                { id: newStudent._id, email: newStudent.email },
+                "toto_academy_2025",
+                { expiresIn: "8h" }
+            );
+
+            res.status(201).json({
+                message: "Student registered successfully but OTP could not be sent",
+                data: newStudent,
+                token,
+                otpInfo: {
+                    success: false,
+                    message: otpError.message
+                },
+                warning: "Please request OP manually later for phone verification"
+            });
+        }
     } catch (error) {
         if (error.message === "Email already exists") {
             return res.status(409).json({ message: "Email already exists" });
         }
-        res.status(400).json({ message: "Error registering student", error: error.message });
+        res.status(400).json({ 
+            message: "Error registering student", 
+            error: error.message 
+        });
     }
 });
 
@@ -130,37 +163,61 @@ router.delete("/deletestudent/:id", authenticateToken, async (req, res) => {
     }
 });
 
+// Send OTP to student's phone number
+router.post("/send-otp", async (req, res) => {
+    try {
+        const { phone_number } = req.body;
+        const result = await studentService.generateAndSendOTP(phone_number);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
 
+// Verify OTP
+router.post("/verify-otp", async (req, res) => {
+    try {
+        const { phone_number, otpCode } = req.body;
+        const result = await studentService.verifyOTP(phone_number, otpCode);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
 
-
-//EMAIL SERVICE FOR STUDENTS
-
+// EMAIL SERVICE FOR STUDENTS
 const emailService = require("../services/email_service");
 
-//sending bulk email route
+// Sending bulk email route
 router.post("/send-bulk-email", authenticateToken, async (req, res) => {
     try {
-      const students = await studentService.getAllStudents();
-      
-      if (!students.length) {
-        return res.status(404).json({ message: "Oops No students found" });
-      }
-  
-      const emails = students.map(s => s.email);
-      const { subject, htmlContent } = req.body;
-  
-      const result = await emailService.sendBulkEmail(emails, subject, htmlContent);
-      
-      res.status(200).json({
-        message: result.success ? "Emails processed" : "Some emails Not sent",
-        details: result
-      });
+        const students = await studentService.getAllStudents();
+        
+        if (!students.length) {
+            return res.status(404).json({ message: "Oops No students found" });
+        }
+
+        const emails = students.map(s => s.email);
+        const { subject, htmlContent } = req.body;
+
+        const result = await emailService.sendBulkEmail(emails, subject, htmlContent);
+        
+        res.status(200).json({
+            message: result.success ? "Emails processed" : "Some emails Not sent",
+            details: result
+        });
     } catch (error) {
-      res.status(500).json({ 
-        message: "Email processing failed",
-        error: error.message
-      });
+        res.status(500).json({ 
+            message: "Email processing failed",
+            error: error.message
+        });
     }
-  });
+});
 
 module.exports = router;

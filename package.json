@@ -19,6 +19,7 @@
     "mongoose": "^8.13.2",
     "nodemailer": "^6.10.1",
     "nodemon": "^3.1.10",
-    "paynow": "^2.2.2"
+    "paynow": "^2.2.2",
+    "twilio": "^5.7.0"
   }
 }

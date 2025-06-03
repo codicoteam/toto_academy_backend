@@ -57,6 +57,10 @@ const studentSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    isPhoneVerified: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 // Hash password before saving
