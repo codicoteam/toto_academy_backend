@@ -7,14 +7,14 @@ const { authenticateToken } = require("../middlewares/auth");
 router.post("/", authenticateToken, async (req, res) => {
   try {
     const newRecordExam = await recordExamService.createRecordExam(req.body);
-    res.status(201).json({ 
-      message: "Record exam created successfully", 
-      data: newRecordExam 
+    res.status(201).json({
+      message: "Record exam created successfully",
+      data: newRecordExam,
     });
   } catch (error) {
-    res.status(400).json({ 
-      message: "Failed to create record exam", 
-      error: error.message 
+    res.status(400).json({
+      message: "Failed to create record exam",
+      error: error.message,
     });
   }
 });
@@ -23,14 +23,14 @@ router.post("/", authenticateToken, async (req, res) => {
 router.get("/", authenticateToken, async (req, res) => {
   try {
     const recordExams = await recordExamService.getAllRecordExams();
-    res.status(200).json({ 
-      message: "Record exams retrieved successfully", 
-      data: recordExams 
+    res.status(200).json({
+      message: "Record exams retrieved successfully",
+      data: recordExams,
     });
   } catch (error) {
-    res.status(500).json({ 
-      message: "Failed to retrieve record exams", 
-      error: error.message 
+    res.status(500).json({
+      message: "Failed to retrieve record exams",
+      error: error.message,
     });
   }
 });
@@ -39,14 +39,14 @@ router.get("/", authenticateToken, async (req, res) => {
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
     const recordExam = await recordExamService.getRecordExamById(req.params.id);
-    res.status(200).json({ 
-      message: "Record exam retrieved successfully", 
-      data: recordExam 
+    res.status(200).json({
+      message: "Record exam retrieved successfully",
+      data: recordExam,
     });
   } catch (error) {
-    res.status(404).json({ 
-      message: "Record exam not found", 
-      error: error.message 
+    res.status(404).json({
+      message: "Record exam not found",
+      error: error.message,
     });
   }
 });
@@ -55,17 +55,17 @@ router.get("/:id", authenticateToken, async (req, res) => {
 router.put("/:id", authenticateToken, async (req, res) => {
   try {
     const updatedRecordExam = await recordExamService.updateRecordExam(
-      req.params.id, 
+      req.params.id,
       req.body
     );
-    res.status(200).json({ 
-      message: "Record exam updated successfully", 
-      data: updatedRecordExam 
+    res.status(200).json({
+      message: "Record exam updated successfully",
+      data: updatedRecordExam,
     });
   } catch (error) {
-    res.status(400).json({ 
-      message: "Failed to update record exam", 
-      error: error.message 
+    res.status(400).json({
+      message: "Failed to update record exam",
+      error: error.message,
     });
   }
 });
@@ -74,13 +74,13 @@ router.put("/:id", authenticateToken, async (req, res) => {
 router.delete("/:id", authenticateToken, async (req, res) => {
   try {
     await recordExamService.deleteRecordExam(req.params.id);
-    res.status(200).json({ 
-      message: "Record exam deleted successfully" 
+    res.status(200).json({
+      message: "Record exam deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({ 
-      message: "Failed to delete record exam", 
-      error: error.message 
+    res.status(500).json({
+      message: "Failed to delete record exam",
+      error: error.message,
     });
   }
 });
@@ -91,14 +91,16 @@ router.get("/student/:studentId", authenticateToken, async (req, res) => {
     const recordExams = await recordExamService.getRecordExamsByStudentId(
       req.params.studentId
     );
-    res.status(200).json({ 
-      message: "Record exams retrieved successfully", 
-      data: recordExams 
+    res.status(200).json({
+      message: "Record exams retrieved successfully",
+      data: recordExams,
     });
   } catch (error) {
-    res.status(404).json({ 
-      message: error.message.includes("found") ? error.message : "Failed to retrieve record exams",
-      error: error.message 
+    res.status(404).json({
+      message: error.message.includes("found")
+        ? error.message
+        : "Failed to retrieve record exams",
+      error: error.message,
     });
   }
 });
@@ -109,14 +111,14 @@ router.delete("/student/:studentId", authenticateToken, async (req, res) => {
     const result = await recordExamService.deleteRecordExamsByStudentId(
       req.params.studentId
     );
-    res.status(200).json({ 
+    res.status(200).json({
       message: `Deleted ${result.deletedCount} record exams for student`,
-      data: result 
+      data: result,
     });
   } catch (error) {
-    res.status(500).json({ 
-      message: "Failed to delete record exams", 
-      error: error.message 
+    res.status(500).json({
+      message: "Failed to delete record exams",
+      error: error.message,
     });
   }
 });
@@ -127,14 +129,16 @@ router.get("/exam/:examId", authenticateToken, async (req, res) => {
     const recordExams = await recordExamService.getRecordExamsByExamId(
       req.params.examId
     );
-    res.status(200).json({ 
-      message: "Record exams retrieved successfully", 
-      data: recordExams 
+    res.status(200).json({
+      message: "Record exams retrieved successfully",
+      data: recordExams,
     });
   } catch (error) {
-    res.status(404).json({ 
-      message: error.message.includes("found") ? error.message : "Failed to retrieve record exams",
-      error: error.message 
+    res.status(404).json({
+      message: error.message.includes("found")
+        ? error.message
+        : "Failed to retrieve record exams",
+      error: error.message,
     });
   }
 });
@@ -145,18 +149,17 @@ router.delete("/exam/:examId", authenticateToken, async (req, res) => {
     const result = await recordExamService.deleteRecordExamsByExamId(
       req.params.examId
     );
-    res.status(200).json({ 
+    res.status(200).json({
       message: `Deleted ${result.deletedCount} record exams for exam`,
-      data: result 
+      data: result,
     });
   } catch (error) {
-    res.status(500).json({ 
-      message: "Failed to delete record exams", 
-      error: error.message 
+    res.status(500).json({
+      message: "Failed to delete record exams",
+      error: error.message,
     });
   }
 });
-
 
 router.get("/last/:studentId/:examId", authenticateToken, async (req, res) => {
   try {
@@ -164,16 +167,41 @@ router.get("/last/:studentId/:examId", authenticateToken, async (req, res) => {
       req.params.studentId,
       req.params.examId
     );
-    res.status(200).json({ 
-      message: "Last record exam retrieved successfully", 
-      data: recordExam 
+    res.status(200).json({
+      message: "Last record exam retrieved successfully",
+      data: recordExam,
     });
   } catch (error) {
-    res.status(404).json({ 
-      message: error.message.includes("found") ? error.message : "Failed to retrieve record exam",
-      error: error.message 
+    res.status(404).json({
+      message: error.message.includes("found")
+        ? error.message
+        : "Failed to retrieve record exam",
+      error: error.message,
     });
   }
 });
+
+router.get(
+  "/exam/:examId/top-students",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const topStudents = await recordExamService.getTopStudentsByExamId(
+        req.params.examId
+      );
+      res.status(200).json({
+        message: "Top students retrieved successfully",
+        data: topStudents,
+      });
+    } catch (error) {
+      res.status(404).json({
+        message: error.message.includes("found")
+          ? error.message
+          : "Failed to retrieve top students",
+        error: error.message,
+      });
+    }
+  }
+);
 
 module.exports = router;

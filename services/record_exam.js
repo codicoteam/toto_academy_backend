@@ -133,6 +133,37 @@ const findOneLastByStudentIdAndExamId = async (studentId, examId) => {
 };
 
 
+// Get top 10 students by percentage for a specific exam
+const getTopStudentsByExamId = async (examId) => {
+  try {
+    const recordExams = await RecordExam.find({ ExamId: examId })
+      .sort({
+        // Convert percentage string to number for sorting (remove '%' and convert)
+        percentange: -1
+      })
+      .limit(10)
+      .populate('studentId', 'firstName lastName email') // Include student details
+      .exec();
+
+    if (!recordExams || recordExams.length === 0) {
+      throw new Error("No record exams found for this exam");
+    }
+
+    // Process the results to ensure consistent percentage format
+    const processedResults = recordExams.map(exam => ({
+      ...exam.toObject(),
+      // Ensure percentage is properly formatted
+      percentange: exam.percentange.endsWith('%') 
+        ? exam.percentange 
+        : `${exam.percentange}%`
+    }));
+
+    return processedResults;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
 
 
 module.exports = {
@@ -145,5 +176,6 @@ module.exports = {
   deleteRecordExamsByStudentId,
   getRecordExamsByExamId,
   deleteRecordExamsByExamId,
-  findOneLastByStudentIdAndExamId
+  findOneLastByStudentIdAndExamId,
+  getTopStudentsByExamId
 };
