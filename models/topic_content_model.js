@@ -4,6 +4,10 @@ const addSubheading = new mongoose.Schema({
     type: String,
     required: false,
   },
+    subheadingAudioPath: {
+    type: String,
+    required: false,
+  },
     question: {
     type: String,
     required: false,
@@ -20,7 +24,6 @@ const addSubheading = new mongoose.Schema({
     type: String,
     required: false,
   },
-
 });
 const lessonInfo = new mongoose.Schema({
   text: {
@@ -52,7 +55,6 @@ const topic_content = new mongoose.Schema(
       type: [String], // Array of strings
       required: false,
     },
-
     file_type: {
       type: String,
       enum: ["video", "audio", "document"],
