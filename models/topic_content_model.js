@@ -33,7 +33,8 @@ const lessonInfo = new mongoose.Schema({
   subHeading: [addSubheading],
   audio: {
     type: String,
-    required: true,
+    default: "no content",
+    required: false,
   },
   video: {
     type: String,
@@ -53,12 +54,13 @@ const topic_content = new mongoose.Schema(
     lesson: [lessonInfo],
     file_path: {
       type: [String], // Array of strings
+      default: [], // Default to an empty array if no files are provided
       required: false,
     },
     file_type: {
       type: String,
       enum: ["video", "audio", "document"],
-      required: true,
+      default: "document", // Default to 'document' if not specified
     },
     Topic: {
       type: mongoose.Schema.Types.ObjectId, // Reference to Subject model
