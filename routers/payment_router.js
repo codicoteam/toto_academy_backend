@@ -1,103 +1,154 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const PaymentService = require("../services/payment_service");
+const { Paynow } = require("paynow");
+const PaymentModel = require('../models/payment_model'); // updated model import
 
-// Create a new payment
-router.post("/payments", async (req, res) => {
-  try {
-    const result = await PaymentService.makePayment(req.body);
-    res.status(201).json(result);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+const paynow = new Paynow("21043", "2bf0dd63-0c72-42c4-a601-0fa85e63c587");
+paynow.resultUrl = "http://example.com/gateways/paynow/update";
+paynow.returnUrl = "http://example.com/return?gateway=paynow&merchantReference=1234";
 
-// Get payment by ID
-router.get("/payments/:id", async (req, res) => {
-  try {
-    const payment = await PaymentService.getPaymentById(req.params.id);
-    if (!payment) {
-      return res.status(404).json({ message: "Payment not found" });
+// 🧾 Helper to generate random reference
+const generateReference = () => `REF-${Math.floor(100000 + Math.random() * 900000)}`;
+
+// 💻 Web Payment
+router.post('/web-paynow-me', async (req, res) => {
+    try {
+        const { student_id, amount, description, method } = req.body;
+
+        const reference = generateReference();
+        const receiptId = `RECEIPT-${Math.floor(100000 + Math.random() * 900000)}`;
+
+        const payment = paynow.createPayment(reference, "test@example.com");
+        payment.add(description || "Payment for Course", amount);
+
+        paynow.send(payment).then(async (response) => {
+            if (response.success) {
+                const newPayment = new PaymentModel({
+                    student_id,
+                    amount,
+                    method,
+                    reference,
+                    receiptId,
+                    status: "pending",
+                    paymentStatus: "initiated",
+                    pollUrl: response.pollUrl,
+                    description,
+                });
+
+                await newPayment.save();
+                res.json({ redirectURL: response.redirectUrl, pollUrl: response.pollUrl });
+            } else {
+                res.status(500).json({ error: response.errors });
+            }
+        }).catch(error => {
+            res.status(500).json({ error: error.message });
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-    res.json(payment);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
 });
 
-// Get payments by student ID
-router.get("/students/:studentId/payments", async (req, res) => {
-  try {
-    const { page = 1, limit = 10 } = req.query;
-    const result = await PaymentService.getPaymentsByStudentId(
-      req.params.studentId,
-      parseInt(page),
-      parseInt(limit)
-    );
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+
+// 📱 Mobile Payment
+const processMobilePayment = async (req, res, method) => {
+    try {
+        const { student_id, amount, description, customerPhoneNumber } = req.body;
+
+        // 🔍 Basic input validation
+        if (!student_id || !amount || !customerPhoneNumber || !method) {
+            console.error("❌ Missing required fields:", req.body);
+            return res.status(400).json({ 
+                error: "Missing required fields: student_id, amount, customerPhoneNumber, or method." 
+            });
+        }
+
+        const reference = generateReference();
+        const receiptId = `RECEIPT-${Math.floor(100000 + Math.random() * 900000)}`;
+
+        const payment = paynow.createPayment(reference, "totoacademyonline@gmail.com");
+        payment.add(description || "Mobile Payment", amount);
+
+        let response;
+        try {
+            // ⏳ Attempt mobile payment via Paynow API
+            response = await paynow.sendMobile(payment, customerPhoneNumber, method);
+            console.log("📨 Paynow response:", response);
+        } catch (apiError) {
+            console.error("❌ Paynow API error:", apiError);
+            return res.status(502).json({ error: "Failed to initiate payment with Paynow", details: apiError.message });
+        }
+
+        if (response.success) {
+            const newPayment = new PaymentModel({
+                student_id,
+                amount,
+                method,
+                reference,
+                receiptId,
+                status: "pending",
+                paymentStatus: "initiated",
+                pollUrl: response.pollUrl,
+                description,
+            });
+
+            await newPayment.save();
+            console.log("✅ Payment saved successfully:", newPayment);
+
+            res.json({ pollUrl: response.pollUrl, reference });
+        } else {
+            console.error("❌ Paynow responded with error:", response.errors);
+            res.status(500).json({ error: "Paynow rejected the request", details: response.errors });
+        }
+    } catch (error) {
+        console.error("❌ Unexpected server error:", error);
+        res.status(500).json({ error: "Server encountered an unexpected error", details: error.message });
+    }
+};
+
+router.post('/mobile-ecocash-paynow-me', (req, res) => processMobilePayment(req, res, 'ecocash'));
+router.post('/mobile-netone-paynow-me', (req, res) => processMobilePayment(req, res, Paynow.Methods.ONEMONEY));
+router.post('/mobile-telone-paynow-me', (req, res) => processMobilePayment(req, res, Paynow.Methods.TELECASH));
+
+// 📦 Check Payment Status
+router.post('/check-status', async (req, res) => {
+    try {
+        const { pollUrl } = req.body;
+        const status = await paynow.pollTransaction(pollUrl);
+
+        if (status.status === "paid") {
+            await PaymentModel.findOneAndUpdate({ pollUrl }, { paymentStatus: "paid", status: "completed" });
+            return res.status(200).json({ status: "paid", message: "Payment successful." });
+        } else if (status.status === "created") {
+            return res.status(202).json({ status: "created", message: "Transaction created, no payment yet." });
+        } else if (status.status === "cancelled") {
+            await PaymentModel.findOneAndUpdate({ pollUrl }, { paymentStatus: "cancelled", status: "failed" });
+            return res.status(202).json({ status: "cancelled", message: "Transaction cancelled." });
+        } else if (status.status === "sent") {
+            return res.status(202).json({ status: "sent", message: "Awaiting client action." });
+        } else {
+            await PaymentModel.findOneAndUpdate({ pollUrl }, { paymentStatus: "failed", status: "failed" });
+            return res.status(400).json({ status: status.status, message: "Unknown or failed transaction." });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
-// Get payments by status
-router.get("/payments/status/:status", async (req, res) => {
-  try {
-    const { page = 1, limit = 10 } = req.query;
-    const result = await PaymentService.getPaymentsByStatus(
-      req.params.status,
-      parseInt(page),
-      parseInt(limit)
-    );
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+// 🔍 Get All Payments by student_id
+router.get('/payments/:studentId', async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const payments = await PaymentModel.find({ student_id: studentId });
 
-// Get recent payments
-router.get("/payments/recent", async (req, res) => {
-  try {
-    const limit = req.query.limit || 5;
-    const payments = await PaymentService.getRecentPayments(parseInt(limit));
-    res.json(payments);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+        if (payments.length === 0) {
+            return res.status(404).json({ message: "No payment history found for this student." });
+        }
 
-// Get payment statistics
-router.get("/payments/stats", async (req, res) => {
-  try {
-    const stats = await PaymentService.getPaymentStats();
-    res.json(stats);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Update payment status
-router.patch("/payments/:id/status", async (req, res) => {
-  try {
-    const result = await PaymentService.updatePaymentStatus(
-      req.params.id,
-      req.body.status
-    );
-    res.json(result);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Handle Paynow webhook
-router.post("/payments/webhook", async (req, res) => {
-  try {
-    const { pollUrl, status } = req.body;
-    const result = await PaymentService.findByPollUrlAndUpdate(pollUrl, status);
-    res.json(result);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
+        res.status(200).json(payments);
+    } catch (error) {
+        res.status(500).json({ error: "Error retrieving payment history.", details: error.message });
+    }
 });
 
 module.exports = router;

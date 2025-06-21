@@ -19,6 +19,10 @@ const walletTransactionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+    pollUrl: {
+    type: String,
+    required: false,
+  },
   status: {
     type: String,
     enum: ["pending", "completed", "failed"],
