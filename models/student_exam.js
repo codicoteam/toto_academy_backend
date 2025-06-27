@@ -3,7 +3,7 @@ const studentExamSchema = new mongoose.Schema(
   {
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Assuming you have a User model for students
+      ref: "Student", // Assuming you have a User model for students
       required: true,
     },
     exam: {

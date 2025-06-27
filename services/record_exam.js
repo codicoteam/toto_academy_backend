@@ -138,7 +138,6 @@ const getTopStudentsByExamId = async (examId) => {
   try {
     const recordExams = await RecordExam.find({ ExamId: examId })
       .populate('studentId', 'firstName lastName email') // Include student details
-      .exec();
 
     if (!recordExams || recordExams.length === 0) {
       throw new Error("No record exams found for this exam");
