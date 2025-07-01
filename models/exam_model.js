@@ -15,6 +15,9 @@ const questionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  correctAnswerExplanation: {
+    type: String,
+    required: false,}
 });
 
 const examSchema = new mongoose.Schema(
