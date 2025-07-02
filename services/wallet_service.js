@@ -66,18 +66,34 @@ const depositToWallet = async (studentId, depositData) => {
     const wallet = await Wallet.findOne({ student: studentId });
     if (!wallet) throw new Error("Wallet not found");
 
+    // Check for duplicate pollUrl if provided
+    if (depositData.pollUrl) {
+      const duplicate = wallet.deposits.find(
+        (tx) => tx.pollUrl === depositData.pollUrl
+      );
+      if (duplicate) {
+        throw new Error("Payment already exists");
+      }
+    }
+
     const transaction = {
       ...depositData,
       type: "deposit",
-      status: depositData.status || "completed",
+      status: depositData.status || "pending",
       date: new Date(),
     };
 
+    // Always push the transaction
     wallet.deposits.push(transaction);
-    wallet.balance += transaction.amount;
-    wallet.lastUpdated = new Date();
 
+    // Only update balance if status is "completed"
+    if (transaction.status === "completed") {
+      wallet.balance += transaction.amount;
+    }
+
+    wallet.lastUpdated = new Date();
     await wallet.save();
+
     return wallet;
   } catch (error) {
     throw new Error(error.message);
