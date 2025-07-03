@@ -128,7 +128,57 @@ const verifyOTP = async (phone_number, otpCode) => {
     }
 };
 
+
+// Dashboard stats service
+const getDashboardStats = async () => {
+    try {
+        const totalStudents = await Student.countDocuments();
+
+        const levelCounts = await Student.aggregate([
+            { $group: { _id: "$level", count: { $sum: 1 } } }
+        ]);
+
+        const subscriptionStats = await Student.aggregate([
+            { $group: { _id: "$subscription_status", count: { $sum: 1 } } }
+        ]);
+
+        const phoneVerificationCount = await Student.aggregate([
+            {
+                $group: {
+                    _id: "$isPhoneVerified",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const subjectPopularity = await Student.aggregate([
+            { $unwind: "$subjects" },
+            { $group: { _id: "$subjects", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 } // Top 5 popular subjects
+        ]);
+
+        const studentsPerSchool = await Student.aggregate([
+            { $group: { _id: "$school", count: { $sum: 1 } } },
+            { $sort: { count: -1 } }
+        ]);
+
+        return {
+            totalStudents,
+            levels: levelCounts,
+            subscriptionStatus: subscriptionStats,
+            phoneVerificationStats: phoneVerificationCount,
+            topSubjects: subjectPopularity,
+            studentsPerSchool
+        };
+    } catch (error) {
+        throw new Error("Failed to fetch dashboard stats: " + error.message);
+    }
+};
+
+
 module.exports = {
+    getDashboardStats,
     createStudent,
     getAllStudents,
     getStudentByEmail,

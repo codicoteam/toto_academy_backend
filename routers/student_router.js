@@ -191,6 +191,24 @@ router.post("/verify-otp", async (req, res) => {
     }
 });
 
+
+// Dashboard stats
+router.get("/dashboard", authenticateToken, async (req, res) => {
+    try {
+        const dashboardStats = await studentService.getDashboardStats();
+        res.status(200).json({
+            message: "Dashboard data retrieved successfully",
+            data: dashboardStats
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Failed to retrieve dashboard stats",
+            error: error.message
+        });
+    }
+});
+
+
 // EMAIL SERVICE FOR STUDENTS
 const emailService = require("../services/email_service");
 
