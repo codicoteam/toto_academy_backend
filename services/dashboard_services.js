@@ -2,6 +2,7 @@ const Admin = require('../models/admin_model');
 const Community = require("../models/community_model");
 const Exam = require("../models/exam_model");
 const Book = require("../models/library_book_model");
+const RecordExam = require("../models/record_exam");
 const Student = require('../models/student_model');
 const Subject = require("../models/subjects_model");
 const TopicContent = require("../models/topic_content_model");
@@ -15,6 +16,7 @@ const getDashboardInfo = async () => {
       totalCommunities,
       totalExams,
       totalBooks,
+      totalRecordedExams,
       totalStudents,
       totalSubjects,
       totalTopicContents,
@@ -27,13 +29,14 @@ const getDashboardInfo = async () => {
       studentsByLevel,
       examsBySubject,
       topicsBySubject,
-      communitiesByLevel
+      booksByLevel  // Changed from communitiesByLevel to booksByLevel
     ] = await Promise.all([
       // Basic counts
       Admin.countDocuments(),
       Community.countDocuments(),
       Exam.countDocuments(),
       Book.countDocuments(),
+      RecordExam.countDocuments(),
       Student.countDocuments(),
       Subject.countDocuments(),
       TopicContent.countDocuments(),
@@ -92,11 +95,11 @@ const getDashboardInfo = async () => {
         }
       ]),
 
-      // Data for pie chart 2: Communities by level
-      Community.aggregate([
+      // REPLACED: Communities by level with Books by level
+      Book.aggregate([
         {
           $group: {
-            _id: "$Level",
+            _id: "$level",
             count: { $sum: 1 }
           }
         }
@@ -124,9 +127,10 @@ const getDashboardInfo = async () => {
       }))
     };
 
+    // UPDATED: Changed to Books by Education Level
     const pieChart2 = {
-      title: "Communities by Education Level",
-      data: communitiesByLevel.map(item => ({
+      title: "Library Books by Education Level",
+      data: booksByLevel.map(item => ({
         name: item._id,
         value: item.count
       }))
@@ -138,6 +142,7 @@ const getDashboardInfo = async () => {
         communities: totalCommunities,
         exams: totalExams,
         books: totalBooks,
+        recordedExams: totalRecordedExams,
         students: totalStudents,
         subjects: totalSubjects,
         topicContents: totalTopicContents,
