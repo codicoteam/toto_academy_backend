@@ -2,7 +2,6 @@ const Admin = require('../models/admin_model');
 const Community = require("../models/community_model");
 const Exam = require("../models/exam_model");
 const Book = require("../models/library_book_model");
-const RecordExam = require("../models/record_exam");
 const Student = require('../models/student_model');
 const Subject = require("../models/subjects_model");
 const TopicContent = require("../models/topic_content_model");
@@ -16,7 +15,6 @@ const getDashboardInfo = async () => {
       totalCommunities,
       totalExams,
       totalBooks,
-      totalRecordedExams,
       totalStudents,
       totalSubjects,
       totalTopicContents,
@@ -36,7 +34,6 @@ const getDashboardInfo = async () => {
       Community.countDocuments(),
       Exam.countDocuments(),
       Book.countDocuments(),
-      RecordExam.countDocuments(),
       Student.countDocuments(),
       Subject.countDocuments(),
       TopicContent.countDocuments(),
@@ -141,7 +138,6 @@ const getDashboardInfo = async () => {
         communities: totalCommunities,
         exams: totalExams,
         books: totalBooks,
-        recordedExams: totalRecordedExams,
         students: totalStudents,
         subjects: totalSubjects,
         topicContents: totalTopicContents,
