@@ -47,6 +47,7 @@ app.use("/api/v1/exam", examRouter);
 app.use("/api/v1/library_book", libraryBookRouter);
 app.use("/api/v1/payment", paymentRouter);
 app.use("/api/v1/record_exam", recordExam);
+app.use("/api/v1/dashboards", recordExam);
 
 
 app.listen(Port, () => {
