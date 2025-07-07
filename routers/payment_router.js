@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Paynow } = require("paynow");
 const PaymentModel = require('../models/payment_model'); // updated model import
+const WalletModel = require('../models/wallet_model'); // Import your wallet model
 
 const paynow = new Paynow("21043", "2bf0dd63-0c72-42c4-a601-0fa85e63c587");
 paynow.resultUrl = "http://example.com/gateways/paynow/update";
@@ -110,24 +111,71 @@ router.post('/mobile-ecocash-paynow-me', (req, res) => processMobilePayment(req,
 router.post('/mobile-netone-paynow-me', (req, res) => processMobilePayment(req, res, Paynow.Methods.ONEMONEY));
 router.post('/mobile-telone-paynow-me', (req, res) => processMobilePayment(req, res, Paynow.Methods.TELECASH));
 
-// 📦 Check Payment Status
+// 📦 Check Payment Status (Updated)
 router.post('/check-status', async (req, res) => {
     try {
         const { pollUrl } = req.body;
         const status = await paynow.pollTransaction(pollUrl);
 
+        // Find payment first to get student ID
+        const payment = await PaymentModel.findOne({ pollUrl });
+        if (!payment) {
+            return res.status(404).json({ message: "Payment record not found" });
+        }
+
         if (status.status === "paid") {
-            await PaymentModel.findOneAndUpdate({ pollUrl }, { paymentStatus: "paid", status: "completed" });
-            return res.status(200).json({ status: "paid", message: "Payment successful." });
+            // 1. Update payment status
+            await PaymentModel.findOneAndUpdate(
+                { pollUrl },
+                { paymentStatus: "paid", status: "completed" }
+            );
+
+            // 2. Update wallet
+            const wallet = await WalletModel.findOne({ student: payment.student_id });
+            if (!wallet) {
+                return res.status(404).json({ message: "Wallet not found for student" });
+            }
+
+            // Find the deposit transaction
+            const depositIndex = wallet.deposits.findIndex(
+                deposit => deposit.pollUrl === pollUrl && deposit.status === "pending"
+            );
+
+            if (depositIndex === -1) {
+                return res.status(404).json({ message: "Pending deposit transaction not found" });
+            }
+
+            // Update transaction status and balance
+            wallet.deposits[depositIndex].status = "completed";
+            wallet.balance += wallet.deposits[depositIndex].amount;
+            wallet.lastUpdated = new Date();
+
+            await wallet.save();
+
+            return res.status(200).json({ 
+                status: "paid", 
+                message: "Payment successful. Wallet updated",
+                newBalance: wallet.balance
+            });
+
         } else if (status.status === "created") {
             return res.status(202).json({ status: "created", message: "Transaction created, no payment yet." });
+        
         } else if (status.status === "cancelled") {
-            await PaymentModel.findOneAndUpdate({ pollUrl }, { paymentStatus: "cancelled", status: "failed" });
+            await PaymentModel.findOneAndUpdate(
+                { pollUrl }, 
+                { paymentStatus: "cancelled", status: "failed" }
+            );
             return res.status(202).json({ status: "cancelled", message: "Transaction cancelled." });
+        
         } else if (status.status === "sent") {
             return res.status(202).json({ status: "sent", message: "Awaiting client action." });
+        
         } else {
-            await PaymentModel.findOneAndUpdate({ pollUrl }, { paymentStatus: "failed", status: "failed" });
+            await PaymentModel.findOneAndUpdate(
+                { pollUrl }, 
+                { paymentStatus: "failed", status: "failed" }
+            );
             return res.status(400).json({ status: status.status, message: "Unknown or failed transaction." });
         }
     } catch (error) {
@@ -135,7 +183,7 @@ router.post('/check-status', async (req, res) => {
     }
 });
 
-// 🔍 Get All Payments by student_id
+// 🔍 Get All Payments by student_id (Remains unchanged)
 router.get('/payments/:studentId', async (req, res) => {
     try {
         const { studentId } = req.params;
