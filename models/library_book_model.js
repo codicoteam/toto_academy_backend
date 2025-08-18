@@ -12,6 +12,10 @@ const bookSchema = new mongoose.Schema(
       required: true,
       enum: ["O Level", "A Level", "Form 1", "Form 2", "Form 3", "Form 4"],
     },
+        title: {
+      type: String,
+      required: true,
+    },
     authorFullName: {
       type: String,
       required: true,
