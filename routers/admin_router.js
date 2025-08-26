@@ -1,12 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const adminService = require("../services/admin_service.js"); // Adjust the path as per your project structure
+const adminService = require("../services/admin_service.js");
 const { authenticateToken } = require("../middlewares/auth");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
 // Login route to authenticate admin and return JWT
-
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -23,7 +22,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       { id: admin._id, email: admin.email },
-      "toto_academy_2025", // Replace with env var in production
+      "toto_academy_2025",
       { expiresIn: "8h" }
     );
 
@@ -45,15 +44,13 @@ router.post("/signup", async (req, res) => {
   try {
     const adminData = req.body;
 
-    // Hash the password before saving
-
     const newAdmin = await adminService.createAdmin(adminData);
 
     // Generate a token for the new admin
     const token = jwt.sign(
       { id: newAdmin._id, email: newAdmin.email },
-      "toto_academy_2025", // Replace with a secure key
-      { expiresIn: "8h" } // Token validity: 1 hour
+      "toto_academy_2025",
+      { expiresIn: "8h" }
     );
 
     res.status(201).json({
@@ -131,6 +128,48 @@ router.delete("/deleteadmin/:id", authenticateToken, async (req, res) => {
     res
       .status(500)
       .json({ message: "Error deleting admin", error: error.message });
+  }
+});
+
+// Forgot password - Request OTP
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    const result = await adminService.generateAndSendPasswordResetOTP(email);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+// Verify password reset OTP
+router.post("/verify-reset-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const result = await adminService.verifyPasswordResetOTP(email, otp);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+// Reset password
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    const result = await adminService.resetPassword(email, otp, newPassword);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
   }
 });
 

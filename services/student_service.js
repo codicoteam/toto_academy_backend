@@ -1,8 +1,18 @@
-const Student = require('../models/student_model'); // Adjust the path as per your project structure
+const Student = require('../models/student_model');
 const twilioClient = require("twilio")(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 );
+const nodemailer = require('nodemailer');
+
+// Configure nodemailer
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // or your email service
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 // Service to create a new student
 const createStudent = async (studentData) => {
@@ -128,6 +138,101 @@ const verifyOTP = async (phone_number, otpCode) => {
     }
 };
 
+// Generate and send password reset OTP via email
+const generateAndSendPasswordResetOTP = async (email) => {
+    try {
+        // Check if email exists
+        const student = await Student.findOne({ email });
+        if (!student) {
+            throw new Error('Email not found');
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Set OTP and expiration (10 minutes)
+        const resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000);
+        
+        await Student.findByIdAndUpdate(student._id, {
+            resetPasswordOTP: otp,
+            resetPasswordExpires
+        });
+
+        // Send email with OTP
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Password Reset OTP',
+            html: `
+                <h2>Password Reset Request</h2>
+                <p>You requested to reset your password. Your OTP is:</p>
+                <h1>${otp}</h1>
+                <p>This OTP will expire in 10 minutes.</p>
+                <p>If you didn't request this, please ignore this email.</p>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        return { 
+            success: true, 
+            message: 'Password reset OTP sent to your email' 
+        };
+    } catch (error) {
+        throw new Error(`Failed to send password reset OTP: ${error.message}`);
+    }
+};
+
+// Verify password reset OTP
+const verifyPasswordResetOTP = async (email, otp) => {
+    try {
+        const student = await Student.findOne({ 
+            email, 
+            resetPasswordOTP: otp,
+            resetPasswordExpires: { $gt: Date.now() } 
+        });
+
+        if (!student) {
+            throw new Error('Invalid or expired OTP');
+        }
+
+        return { 
+            success: true, 
+            message: 'OTP verified successfully' 
+        };
+    } catch (error) {
+        throw new Error(`OTP verification failed: ${error.message}`);
+    }
+};
+
+// Reset password after OTP verification
+const resetPassword = async (email, otp, newPassword) => {
+    try {
+        const student = await Student.findOne({ 
+            email, 
+            resetPasswordOTP: otp,
+            resetPasswordExpires: { $gt: Date.now() } 
+        });
+
+        if (!student) {
+            throw new Error('Invalid or expired OTP');
+        }
+
+        // Update password and clear reset fields
+        await Student.findByIdAndUpdate(student._id, {
+            password: newPassword,
+            resetPasswordOTP: undefined,
+            resetPasswordExpires: undefined
+        });
+
+        return { 
+            success: true, 
+            message: 'Password reset successfully' 
+        };
+    } catch (error) {
+        throw new Error(`Password reset failed: ${error.message}`);
+    }
+};
 
 // Dashboard stats service
 const getDashboardStats = async () => {
@@ -176,7 +281,6 @@ const getDashboardStats = async () => {
     }
 };
 
-
 module.exports = {
     getDashboardStats,
     createStudent,
@@ -187,4 +291,7 @@ module.exports = {
     deleteStudent,
     generateAndSendOTP,
     verifyOTP,
+    generateAndSendPasswordResetOTP,
+    verifyPasswordResetOTP,
+    resetPassword
 };

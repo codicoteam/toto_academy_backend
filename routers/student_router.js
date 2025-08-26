@@ -191,6 +191,47 @@ router.post("/verify-otp", async (req, res) => {
     }
 });
 
+// Forgot password - Request OTP
+router.post("/forgot-password", async (req, res) => {
+    try {
+        const { email } = req.body;
+        const result = await studentService.generateAndSendPasswordResetOTP(email);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
+
+// Verify password reset OTP
+router.post("/verify-reset-otp", async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        const result = await studentService.verifyPasswordResetOTP(email, otp);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
+
+// Reset password
+router.post("/reset-password", async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+        const result = await studentService.resetPassword(email, otp, newPassword);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
 
 // Dashboard stats
 router.get("/dashboard", authenticateToken, async (req, res) => {
@@ -209,33 +250,5 @@ router.get("/dashboard", authenticateToken, async (req, res) => {
 });
 
 
-// EMAIL SERVICE FOR STUDENTS
-const emailService = require("../services/email_service");
-
-// Sending bulk email route
-router.post("/send-bulk-email", authenticateToken, async (req, res) => {
-    try {
-        const students = await studentService.getAllStudents();
-        
-        if (!students.length) {
-            return res.status(404).json({ message: "Oops No students found" });
-        }
-
-        const emails = students.map(s => s.email);
-        const { subject, htmlContent } = req.body;
-
-        const result = await emailService.sendBulkEmail(emails, subject, htmlContent);
-        
-        res.status(200).json({
-            message: result.success ? "Emails processed" : "Some emails Not sent",
-            details: result
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            message: "Email processing failed",
-            error: error.message
-        });
-    }
-});
 
 module.exports = router;

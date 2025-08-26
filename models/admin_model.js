@@ -27,6 +27,15 @@ const adminSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    // New fields for password reset
+    resetPasswordOTP: {
+        type: String,
+        required: false,
+    },
+    resetPasswordExpires: {
+        type: Date,
+        required: false,
+    },
 });
 
 // Hash password before saving
@@ -48,6 +57,5 @@ adminSchema.pre("findOneAndUpdate", async function (next) {
     
     next();
 });
-
 
 module.exports = mongoose.model("Admin", adminSchema);
