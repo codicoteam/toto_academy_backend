@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-
 const adminSchema = new mongoose.Schema({
     firstName: {
         type: String,
@@ -27,35 +26,18 @@ const adminSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    // New fields for password reset
     resetPasswordOTP: {
         type: String,
-        required: false,
     },
     resetPasswordExpires: {
         type: Date,
-        required: false,
     },
-});
-
-// Hash password before saving
-adminSchema.pre("save", async function (next) {
-    if (this.isModified("password")) {
-        this.password = await bcrypt.hash(this.password, 10);
-    }
-    next();
-});
-
-// Hash password before updating a client
-adminSchema.pre("findOneAndUpdate", async function (next) {
-    const update = this.getUpdate();
-    
-    // Check if password is being updated
-    if (update.password) {
-        update.password = await bcrypt.hash(update.password, 10);
-    }
-    
-    next();
+    role: {
+        type: String,
+        enum: ["teacher", "main admin"], // Only allow these two
+        default: "teacher", // Optional default
+        required: true,
+    },
 });
 
 module.exports = mongoose.model("Admin", adminSchema);

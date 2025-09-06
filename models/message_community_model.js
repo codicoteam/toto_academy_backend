@@ -10,8 +10,13 @@ const communityMessageSchema = new mongoose.Schema(
     },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Student",
       required: true,
+      refPath: "senderModel", // Use dynamic reference based on senderModel field
+    },
+    senderModel: {
+      type: String,
+      required: true,
+      enum: ["Student", "Admin"], // Specify which models can be senders
     },
     message: {
       type: String,
@@ -19,7 +24,7 @@ const communityMessageSchema = new mongoose.Schema(
     },
     imagePath: {
       type: [String], // Array of image paths or URLs
-      default: [],    // Optional field
+      default: [], // Optional field
     },
     timestamp: {
       type: Date,

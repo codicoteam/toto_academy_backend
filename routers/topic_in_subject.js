@@ -39,12 +39,9 @@ router.get("/get/:id", authenticateToken, async (req, res) => {
       .status(200)
       .json({ message: "Topic retrieved successfully", data: topic });
   } catch (error) {
-    res
-      .status(404)
-      .json({ message: "Topic not found", error: error.message });
+    res.status(404).json({ message: "Topic not found", error: error.message });
   }
 });
-
 
 // Get topic by ID
 router.get("/gettopicbysubjectid/:id", authenticateToken, async (req, res) => {
@@ -54,11 +51,33 @@ router.get("/gettopicbysubjectid/:id", authenticateToken, async (req, res) => {
       .status(200)
       .json({ message: "Topics retrieved successfully", data: topic });
   } catch (error) {
-    res
-      .status(404)
-      .json({ message: "Topics not found", error: error.message });
+    res.status(404).json({ message: "Topics not found", error: error.message });
   }
 });
+
+// Router: topicRouter.js
+router.get(
+  "/getfivetopicsbysubjectid/:id",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const topics = await topicService.getRandomFiveTopicsBySubjectId(
+        req.params.id
+      );
+      res
+        .status(200)
+        .json({
+          message: "Random 5 topics retrieved successfully",
+          data: topics,
+        });
+    } catch (error) {
+      res
+        .status(404)
+        .json({ message: "Topics not found", error: error.message });
+    }
+  }
+);
+
 // Update topic by ID
 router.put("/update/:id", authenticateToken, async (req, res) => {
   try {

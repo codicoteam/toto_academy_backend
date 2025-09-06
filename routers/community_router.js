@@ -141,4 +141,73 @@ router.post("/leave/:communityId", authenticateToken, async (req, res) => {
   }
 });
 
+// Add admin to community
+router.post("/add-admin/:communityId", authenticateToken, async (req, res) => {
+  try {
+    const { adminId } = req.body;
+    const updatedCommunity = await communityService.addAdminToCommunity(
+      req.params.communityId,
+      adminId
+    );
+    res.status(200).json({
+      message: "Admin added to community successfully",
+      data: updatedCommunity,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "Failed to add admin to community",
+      error: error.message,
+    });
+  }
+});
+
+// Remove admin from community
+router.post(
+  "/remove-admin/:communityId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { adminId } = req.body;
+      const updatedCommunity = await communityService.removeAdminFromCommunity(
+        req.params.communityId,
+        adminId
+      );
+      res.status(200).json({
+        message: "Admin removed from community successfully",
+        data: updatedCommunity,
+      });
+    } catch (error) {
+      res.status(400).json({
+        message: "Failed to remove admin from community",
+        error: error.message,
+      });
+    }
+  }
+);
+
+// Remove student from community (admin action)
+router.post(
+  "/remove-student/:communityId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { studentId } = req.body;
+      const updatedCommunity =
+        await communityService.removeStudentFromCommunity(
+          req.params.communityId,
+          studentId
+        );
+      res.status(200).json({
+        message: "Student removed from community successfully",
+        data: updatedCommunity,
+      });
+    } catch (error) {
+      res.status(400).json({
+        message: "Failed to remove student from community",
+        error: error.message,
+      });
+    }
+  }
+);
+
 module.exports = router;

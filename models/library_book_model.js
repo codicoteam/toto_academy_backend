@@ -1,7 +1,28 @@
 const mongoose = require("mongoose");
 
-const bookSchema = new mongoose.Schema(
+const librarySchema = new mongoose.Schema(
   {
+    title: {
+      type: String,
+      required: true,
+    },
+    description: {
+      type: String,
+      required: true,
+    },
+    cover_image: {
+      type: String,
+      required: true,
+    },
+    file_path: {
+      type: String,
+      required: true,
+    },
+    file_type: {
+      type: String,
+      enum: ["video", "audio", "document"],
+      required: true,
+    },
     subject: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Subject",
@@ -9,27 +30,27 @@ const bookSchema = new mongoose.Schema(
     },
     level: {
       type: String,
-      required: true,
       enum: ["O Level", "A Level", "Form 1", "Form 2", "Form 3", "Form 4"],
-    },
-        title: {
-      type: String,
       required: true,
     },
-    authorFullName: {
-      type: String,
-      required: true,
-    },
-    filePath: {
-      type: String,
-      required: true,
-    },
-    description: {
-      type: String,
-    },
-    showBook: {
-      type: Boolean,
-      default: true,
+    // Add likes array to track student likes
+    likes: [
+      {
+        student: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Student",
+          required: true,
+        },
+        likedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    // Track total likes count for easier queries
+    likesCount: {
+      type: Number,
+      default: 0,
     },
   },
   {
@@ -37,5 +58,4 @@ const bookSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Book", bookSchema);
-// make sure to have api to get one by subject id 
+module.exports = mongoose.model("books", librarySchema);

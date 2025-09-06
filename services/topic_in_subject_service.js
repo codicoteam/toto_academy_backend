@@ -74,6 +74,25 @@ const getTopicsBySubjectId = async (subjectId) => {
   }
 };
 
+// Service: topicService.js
+const getRandomFiveTopicsBySubjectId = async (subjectId) => {
+  try {
+    // Use aggregation with $match and $sample for random selection
+    const topics = await Topic.aggregate([
+      { $match: { subject: mongoose.Types.ObjectId(subjectId) } },
+      { $sample: { size: 5 } }  // Pick 5 random documents
+    ]);
+
+    if (!topics || topics.length === 0) {
+      throw new Error("No topics found for this subject");
+    }
+
+    return topics;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
 
 module.exports = {
   createTopic,
@@ -81,5 +100,6 @@ module.exports = {
   getTopicById,
   updateTopic,
   deleteTopic,
+  getRandomFiveTopicsBySubjectId,
   getTopicsBySubjectId
 };

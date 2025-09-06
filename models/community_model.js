@@ -30,6 +30,13 @@ const communitySchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // 🔹 Add this field to allow Admins to manage/update the community
+    admins: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Admin",
+      },
+    ],
   },
   {
     timestamps: true,

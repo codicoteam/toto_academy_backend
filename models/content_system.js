@@ -10,6 +10,10 @@ const contentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    cover_image: {
+      type: String,
+      required: true,
+    },
     file_path: {
       type: String,
       required: true,
@@ -28,7 +32,7 @@ const contentSchema = new mongoose.Schema(
       type: String,
       enum: ["O Level", "A Level", "Form 1", "Form 2", "Form 3", "Form 4"],
       required: true,
-    }
+    },
   },
   {
     timestamps: true,

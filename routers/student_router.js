@@ -192,7 +192,7 @@ router.post("/verify-otp", async (req, res) => {
 });
 
 // Forgot password - Request OTP
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot_password", async (req, res) => {
     try {
         const { email } = req.body;
         const result = await studentService.generateAndSendPasswordResetOTP(email);
@@ -223,7 +223,7 @@ router.post("/verify-reset-otp", async (req, res) => {
 router.post("/reset-password", async (req, res) => {
     try {
         const { email, otp, newPassword } = req.body;
-        const result = await studentService.resetPassword(email, otp, newPassword);
+        const result = await studentService.resetPassword(email, newPassword);
         res.status(200).json(result);
     } catch (error) {
         res.status(400).json({ 

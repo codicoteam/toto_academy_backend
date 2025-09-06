@@ -136,6 +136,87 @@ const leaveCommunity = async (communityId, studentId) => {
   }
 };
 
+// Add admin to community
+const addAdminToCommunity = async (communityId, adminId) => {
+  try {
+    const community = await Community.findById(communityId);
+    if (!community) {
+      throw new Error("Community not found");
+    }
+
+    // Avoid duplicates
+    if (community.admins.includes(adminId)) {
+      throw new Error("Admin already added to the community");
+    }
+
+    community.admins.push(adminId);
+    await community.save();
+
+    return await Community.findById(communityId)
+      .populate("subject")
+      .populate("students", "firstName lastName")
+      .populate("admins", "firstName lastName");
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+// Remove admin from community
+const removeAdminFromCommunity = async (communityId, adminId) => {
+  try {
+    const community = await Community.findById(communityId);
+    if (!community) {
+      throw new Error("Community not found");
+    }
+
+    // Check if admin is actually in the list
+    if (!community.admins.includes(adminId)) {
+      throw new Error("Admin is not a member of the community");
+    }
+
+    // Remove the admin from the list
+    community.admins = community.admins.filter(
+      (id) => id.toString() !== adminId.toString()
+    );
+    await community.save();
+
+    return await Community.findById(communityId)
+      .populate("subject")
+      .populate("students", "firstName lastName")
+      .populate("admins", "firstName lastName");
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+// Remove student from community (admin function)
+const removeStudentFromCommunity = async (communityId, studentId) => {
+  try {
+    const community = await Community.findById(communityId);
+    if (!community) {
+      throw new Error("Community not found");
+    }
+
+    // Check if student is actually a member
+    if (!community.students.includes(studentId)) {
+      throw new Error("Student is not a member of the community");
+    }
+
+    // Remove the student from the list
+    community.students = community.students.filter(
+      (id) => id.toString() !== studentId.toString()
+    );
+    await community.save();
+
+    return await Community.findById(communityId)
+      .populate("subject")
+      .populate("students", "firstName lastName")
+      .populate("admins", "firstName lastName");
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
 module.exports = {
   leaveCommunity,
   createCommunity,
@@ -145,4 +226,7 @@ module.exports = {
   updateCommunity,
   deleteCommunity,
   joinCommunity,
+  addAdminToCommunity,
+  removeAdminFromCommunity,
+  removeStudentFromCommunity,
 };

@@ -1,14 +1,24 @@
-const CommunityMessage = require("../models/message_community_model"); // Adjust path if necessary
+const CommunityMessage = require("../models/message_community_model");
 
 // Create new community message
 const createCommunityMessage = async (data) => {
   try {
     const newMessage = new CommunityMessage(data);
     await newMessage.save();
-    return await newMessage.populate([
+
+    // Dynamic population based on sender type
+    const populateOptions = [
       { path: "community" },
-      { path: "sender", select: "firstName lastName" }
-    ]);
+      {
+        path: "sender",
+        select:
+          data.senderModel === "Student"
+            ? "firstName lastName profilePicture"
+            : "name email profilePicture",
+      },
+    ];
+
+    return await newMessage.populate(populateOptions);
   } catch (error) {
     throw new Error(error.message);
   }
@@ -20,7 +30,15 @@ const getCommunityMessages = async (communityId) => {
     const messages = await CommunityMessage.find({ community: communityId })
       .populate([
         { path: "community" },
-        { path: "sender", select: "firstName lastName" }
+        {
+          path: "sender",
+          // Select different fields based on sender type
+          select: function () {
+            return this.senderModel === "Student"
+              ? "firstName lastName profilePicture"
+              : "name email profilePicture";
+          },
+        },
       ])
       .sort({ timestamp: -1 });
 
@@ -36,11 +54,18 @@ const getCommunityMessages = async (communityId) => {
 // Get message by ID
 const getMessageById = async (id) => {
   try {
-    const message = await CommunityMessage.findById(id)
-      .populate([
-        { path: "community" },
-        { path: "sender", select: "firstName lastName" }
-      ]);
+    const message = await CommunityMessage.findById(id).populate([
+      { path: "community" },
+      {
+        path: "sender",
+        // Select different fields based on sender type
+        select: function () {
+          return this.senderModel === "Student"
+            ? "firstName lastName profilePicture"
+            : "name email profilePicture";
+        },
+      },
+    ]);
 
     if (!message) {
       throw new Error("Message not found");
@@ -58,7 +83,15 @@ const updateMessage = async (id, updateData) => {
       new: true,
     }).populate([
       { path: "community" },
-      { path: "sender", select: "firstName lastName" }
+      {
+        path: "sender",
+        // Select different fields based on sender type
+        select: function () {
+          return this.senderModel === "Student"
+            ? "firstName lastName profilePicture"
+            : "name email profilePicture";
+        },
+      },
     ]);
 
     if (!updated) {
@@ -89,7 +122,15 @@ const getMessagesBySenderId = async (senderId) => {
     const messages = await CommunityMessage.find({ sender: senderId })
       .populate([
         { path: "community" },
-        { path: "sender", select: "firstName lastName" }
+        {
+          path: "sender",
+          // Select different fields based on sender type
+          select: function () {
+            return this.senderModel === "Student"
+              ? "firstName lastName profilePicture"
+              : "name email profilePicture";
+          },
+        },
       ])
       .sort({ timestamp: -1 });
 
@@ -108,5 +149,5 @@ module.exports = {
   getMessageById,
   updateMessage,
   deleteMessage,
-  getMessagesBySenderId
+  getMessagesBySenderId,
 };

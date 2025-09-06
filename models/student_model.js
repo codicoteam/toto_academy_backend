@@ -62,7 +62,7 @@ const studentSchema = new mongoose.Schema({
     default: false,
   },
   // New fields for password reset
-  resetPasswordOTP: {
+  resetPasswordVerificationSid: {
     type: String,
     required: false,
   },
@@ -71,6 +71,17 @@ const studentSchema = new mongoose.Schema({
     required: false,
   },
 });
+
+// Add virtual for progress tracking
+studentSchema.virtual("progress", {
+  ref: "StudentTopicProgress",
+  localField: "_id",
+  foreignField: "student",
+});
+
+// Enable virtuals when converting to JSON
+studentSchema.set("toJSON", { virtuals: true });
+studentSchema.set("toObject", { virtuals: true });
 
 // Hash password before saving
 studentSchema.pre("save", async function (next) {

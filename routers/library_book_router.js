@@ -20,14 +20,16 @@ router.post("/create", authenticateToken, async (req, res) => {
 // Get all books
 router.get("/getall", authenticateToken, async (req, res) => {
   try {
-    const books = await bookService.getAllBooks();
-    res
-      .status(200)
-      .json({ message: "Books retrieved successfully", data: books });
+    const books = await bookService.getAllBooksWithLikes(); // Changed from getAllBooks
+    res.status(200).json({
+      message: "Books retrieved successfully",
+      data: books
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Failed to retrieve books", error: error.message });
+    res.status(500).json({
+      message: "Failed to retrieve books",
+      error: error.message
+    });
   }
 });
 
@@ -80,5 +82,97 @@ router.delete("/delete/:id", authenticateToken, async (req, res) => {
       .json({ message: "Failed to delete book", error: error.message });
   }
 });
+
+
+// Toggle like on content
+router.post("/:id/like", authenticateToken, async (req, res) => {
+  try {
+    // Assuming student ID is available in req.user after authentication
+    const studentId = req.user.id;
+    const content = await bookService.toggleLike(req.params.id, studentId);
+    
+    res.status(200).json({
+      message: "Like toggled successfully",
+      data: content,
+      liked: content.likes.some(like => like.student.toString() === studentId)
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "Failed to toggle like",
+      error: error.message
+    });
+  }
+});
+
+// Get content with likes
+router.get("/with-likes/:id", authenticateToken, async (req, res) => {
+  try {
+    const book = await bookService.getBookWithLikes(req.params.id);
+    res.status(200).json({
+      message: "Book retrieved with likes",
+      data: book
+    });
+  } catch (error) {
+    res.status(404).json({
+      message: "Book not found",
+      error: error.message
+    });
+  }
+});
+
+// Get all books with likes
+router.get("/with-likes", authenticateToken, async (req, res) => {
+  try {
+    const books = await bookService.getAllBooksWithLikes();
+    res.status(200).json({
+      message: "Books retrieved with likes",
+      data: books
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to retrieve books",
+      error: error.message
+    });
+  }
+});
+
+// Check if student has liked content
+router.get("/:id/has-liked", authenticateToken, async (req, res) => {
+  try {
+    const studentId = req.user.id;
+    const hasLiked = await bookService.hasStudentLiked(req.params.id, studentId);
+    
+    res.status(200).json({
+      message: "Like status checked",
+      data: { hasLiked }
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "Failed to check like status",
+      error: error.message
+    });
+  }
+});
+
+// Get popular books
+// Get popular books
+router.get("/popular", authenticateToken, async (req, res) => {
+  try {
+    // Use query parameter instead of optional path param
+    const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+    const books = await bookService.getPopularBooks(limit);
+
+    res.status(200).json({
+      message: "Popular books retrieved",
+      data: books
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to retrieve popular books",
+      error: error.message
+    });
+  }
+});
+
 
 module.exports = router;
