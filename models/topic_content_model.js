@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const replySchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true,
+    required: false,
     refPath: "comments.userType", // Dynamic reference based on userType
   },
   userType: {
@@ -14,7 +14,7 @@ const replySchema = new mongoose.Schema({
   },
   text: {
     type: String,
-    required: true,
+    required: false,
   },
   createdAt: {
     type: Date,

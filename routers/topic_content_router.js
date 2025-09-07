@@ -58,6 +58,23 @@ router.get("/by-topic/:topicId", authenticateToken, async (req, res) => {
   }
 });
 
+
+// Get topic content by ID
+router.get("/:id", authenticateToken, async (req, res) => {
+  try {
+    const content = await topicContentService.getTopicContentById(req.params.id);
+    res.status(200).json({
+      message: "Topic content retrieved successfully",
+      data: content,
+    });
+  } catch (error) {
+    res.status(404).json({
+      message: "Topic content not found",
+      error: error.message,
+    });
+  }
+});
+
 // Update topic content by ID
 router.put("/update/:id", authenticateToken, async (req, res) => {
   try {
