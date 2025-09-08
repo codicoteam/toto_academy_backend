@@ -21,6 +21,8 @@ const paymentRouter = require("./routers/payment_router.js");
 const recordExam = require("./routers/record_exam_router.js");
 const dashboard = require("./routers/dashboard_router.js");
 const progressRoutes = require("./routers/student_topic_progress_router");
+const adminStudentChat = require("./routers/admin_student_chat_router.js");
+
 const walletService = require("./services/wallet_service");
 
 const dbUrl = process.env.DATABASE_URL;
@@ -53,9 +55,7 @@ app.use("/api/v1/payment", paymentRouter);
 app.use("/api/v1/record_exam", recordExam);
 app.use("/api/v1/dashboards", dashboard);
 app.use("/api/v1/progress", progressRoutes);
-
-// Cron job for checking expired withdrawals
-// Run every day at midnight
+app.use("/api/v1/admin_student_chat", adminStudentChat);
 cron.schedule("0 0 * * *", async () => {
   console.log("Checking for expired withdrawals...");
   try {
