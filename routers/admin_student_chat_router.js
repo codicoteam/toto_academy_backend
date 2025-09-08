@@ -35,6 +35,40 @@ router.get(
   }
 );
 
+// Get conversations for admin (grouped by student)
+router.get(
+  "/admin-conversations/:adminId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { adminId } = req.params;
+      const conversations = await chatService.getAdminConversations(adminId);
+      res
+        .status(200)
+        .json({ message: "Admin conversations retrieved", data: conversations });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// Get conversations for student (grouped by admin)
+router.get(
+  "/student-conversations/:studentId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { studentId } = req.params;
+      const conversations = await chatService.getStudentConversations(studentId);
+      res
+        .status(200)
+        .json({ message: "Student conversations retrieved", data: conversations });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
 // Mark messages as viewed
 router.put(
   "/mark-viewed/:studentId/:adminId",

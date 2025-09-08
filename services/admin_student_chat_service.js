@@ -28,6 +28,160 @@ const getConversation = async (studentId, adminId) => {
   }
 };
 
+// Get conversations for admin (grouped by student with last message)
+const getAdminConversations = async (adminId) => {
+  try {
+    const conversations = await Chat.aggregate([
+      {
+        $match: {
+          $or: [
+            { sender: mongoose.Types.ObjectId(adminId), receiverModel: "Student" },
+            { receiver: mongoose.Types.ObjectId(adminId), senderModel: "Student" }
+          ]
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $eq: ["$sender", mongoose.Types.ObjectId(adminId)] },
+              "$receiver",
+              "$sender"
+            ]
+          },
+          lastMessage: { $first: "$$ROOT" },
+          studentId: {
+            $first: {
+              $cond: [
+                { $eq: ["$sender", mongoose.Types.ObjectId(adminId)] },
+                "$receiver",
+                "$sender"
+              ]
+            }
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: "students",
+          localField: "studentId",
+          foreignField: "_id",
+          as: "student"
+        }
+      },
+      {
+        $unwind: "$student"
+      },
+      {
+        $project: {
+          _id: 0,
+          student: {
+            _id: "$student._id",
+            name: "$student.name",
+            email: "$student.email"
+          },
+          lastMessage: {
+            _id: "$lastMessage._id",
+            message: "$lastMessage.message",
+            sender: "$lastMessage.sender",
+            receiver: "$lastMessage.receiver",
+            viewed: "$lastMessage.viewed",
+            createdAt: "$lastMessage.createdAt",
+            updatedAt: "$lastMessage.updatedAt"
+          }
+        }
+      },
+      {
+        $sort: { "lastMessage.createdAt": -1 }
+      }
+    ]);
+
+    return conversations;
+  } catch (err) {
+    throw new Error(err.message);
+  }
+};
+
+// Get conversations for student (grouped by admin with last message)
+const getStudentConversations = async (studentId) => {
+  try {
+    const conversations = await Chat.aggregate([
+      {
+        $match: {
+          $or: [
+            { sender: mongoose.Types.ObjectId(studentId), receiverModel: "Admin" },
+            { receiver: mongoose.Types.ObjectId(studentId), senderModel: "Admin" }
+          ]
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $eq: ["$sender", mongoose.Types.ObjectId(studentId)] },
+              "$receiver",
+              "$sender"
+            ]
+          },
+          lastMessage: { $first: "$$ROOT" },
+          adminId: {
+            $first: {
+              $cond: [
+                { $eq: ["$sender", mongoose.Types.ObjectId(studentId)] },
+                "$receiver",
+                "$sender"
+              ]
+            }
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: "admins",
+          localField: "adminId",
+          foreignField: "_id",
+          as: "admin"
+        }
+      },
+      {
+        $unwind: "$admin"
+      },
+      {
+        $project: {
+          _id: 0,
+          admin: {
+            _id: "$admin._id",
+            name: "$admin.name",
+            email: "$admin.email"
+          },
+          lastMessage: {
+            _id: "$lastMessage._id",
+            message: "$lastMessage.message",
+            sender: "$lastMessage.sender",
+            receiver: "$lastMessage.receiver",
+            viewed: "$lastMessage.viewed",
+            createdAt: "$lastMessage.createdAt",
+            updatedAt: "$lastMessage.updatedAt"
+          }
+        }
+      },
+      {
+        $sort: { "lastMessage.createdAt": -1 }
+      }
+    ]);
+
+    return conversations;
+  } catch (err) {
+    throw new Error(err.message);
+  }
+};
+
 // Mark messages as viewed
 const markMessagesAsViewed = async (studentId, adminId) => {
   try {
@@ -73,6 +227,8 @@ const deleteMessage = async (messageId) => {
 module.exports = {
   sendMessage,
   getConversation,
+  getAdminConversations,
+  getStudentConversations,
   markMessagesAsViewed,
   deleteConversation,
   deleteMessage,
