@@ -67,6 +67,25 @@ const reactionSchema = new mongoose.Schema({
   },
 });
 
+const mcqQuestionSchema = new mongoose.Schema({
+  question: {
+    type: String,
+    required: false,
+  },
+  options: {
+    type: [String],
+    required: false,
+  },
+  correctAnswer: {
+    type: String,
+    required: false,
+  },
+  explanation: {
+    type: String,
+    required: false,
+  },
+});
+
 const addSubheading = new mongoose.Schema({
   text: {
     type: String,
@@ -92,6 +111,8 @@ const addSubheading = new mongoose.Schema({
     type: String,
     required: false,
   },
+
+  mcqQuestions: [mcqQuestionSchema],
 });
 const lessonInfo = new mongoose.Schema({
   text: {

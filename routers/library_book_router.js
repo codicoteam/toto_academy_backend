@@ -85,10 +85,14 @@ router.delete("/delete/:id", authenticateToken, async (req, res) => {
 
 
 // Toggle like on content
+// Toggle like on content
 router.post("/:id/like", authenticateToken, async (req, res) => {
   try {
-    // Assuming student ID is available in req.user after authentication
-    const studentId = req.user.id;
+    const { studentId } = req.body;  // <-- now reading from body
+    if (!studentId) {
+      return res.status(400).json({ message: "studentId is required" });
+    }
+
     const content = await bookService.toggleLike(req.params.id, studentId);
     
     res.status(200).json({
