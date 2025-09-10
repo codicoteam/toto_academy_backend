@@ -26,6 +26,10 @@ const chatMessageSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+      imageAttached:[{
+      type: String,
+      required: false,
+    }],
     viewed: {
       type: Boolean,
       default: false,
