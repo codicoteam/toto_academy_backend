@@ -31,29 +31,29 @@ const getConversation = async (studentId, adminId) => {
 
 // Get conversations for admin (grouped by student with last message)
 // Get conversations for admin (grouped by student with last message)
+// Get conversations for admin (grouped by student with last message)
 const getAdminConversations = async (adminId) => {
   try {
-    const adminObjectId = new mongoose.Types.ObjectId(adminId); // fix
+    const adminObjectId = new mongoose.Types.ObjectId(adminId);
+
     const conversations = await Chat.aggregate([
       {
         $match: {
           $or: [
             { sender: adminObjectId, receiverModel: "Student" },
-            { receiver: adminObjectId, senderModel: "Student" }
-          ]
-        }
+            { receiver: adminObjectId, senderModel: "Student" },
+          ],
+        },
       },
-      {
-        $sort: { createdAt: -1 }
-      },
+      { $sort: { createdAt: -1 } },
       {
         $group: {
           _id: {
             $cond: [
               { $eq: ["$sender", adminObjectId] },
               "$receiver",
-              "$sender"
-            ]
+              "$sender",
+            ],
           },
           lastMessage: { $first: "$$ROOT" },
           studentId: {
@@ -61,19 +61,19 @@ const getAdminConversations = async (adminId) => {
               $cond: [
                 { $eq: ["$sender", adminObjectId] },
                 "$receiver",
-                "$sender"
-              ]
-            }
-          }
-        }
+                "$sender",
+              ],
+            },
+          },
+        },
       },
       {
         $lookup: {
           from: "students",
           localField: "studentId",
           foreignField: "_id",
-          as: "student"
-        }
+          as: "student",
+        },
       },
       { $unwind: "$student" },
       {
@@ -82,8 +82,9 @@ const getAdminConversations = async (adminId) => {
           student: {
             _id: "$student._id",
             firstName: "$student.firstName",
-            la
-            email: "$student.email"
+            lastName: "$student.lastName",
+            profile_picture: "$student.profile_picture",
+            email: "$student.email",
           },
           lastMessage: {
             _id: "$lastMessage._id",
@@ -92,11 +93,12 @@ const getAdminConversations = async (adminId) => {
             receiver: "$lastMessage.receiver",
             viewed: "$lastMessage.viewed",
             createdAt: "$lastMessage.createdAt",
-            updatedAt: "$lastMessage.updatedAt"
-          }
-        }
+            updatedAt: "$lastMessage.updatedAt",
+            imageAttached: "$lastMessage.imageAttached", // ✅ added
+          },
+        },
       },
-      { $sort: { "lastMessage.createdAt": -1 } }
+      { $sort: { "lastMessage.createdAt": -1 } },
     ]);
 
     return conversations;
@@ -108,15 +110,16 @@ const getAdminConversations = async (adminId) => {
 // Get conversations for student (grouped by admin with last message)
 const getStudentConversations = async (studentId) => {
   try {
-    const studentObjectId = new mongoose.Types.ObjectId(studentId); // fix
+    const studentObjectId = new mongoose.Types.ObjectId(studentId);
+
     const conversations = await Chat.aggregate([
       {
         $match: {
           $or: [
             { sender: studentObjectId, receiverModel: "Admin" },
-            { receiver: studentObjectId, senderModel: "Admin" }
-          ]
-        }
+            { receiver: studentObjectId, senderModel: "Admin" },
+          ],
+        },
       },
       { $sort: { createdAt: -1 } },
       {
@@ -125,8 +128,8 @@ const getStudentConversations = async (studentId) => {
             $cond: [
               { $eq: ["$sender", studentObjectId] },
               "$receiver",
-              "$sender"
-            ]
+              "$sender",
+            ],
           },
           lastMessage: { $first: "$$ROOT" },
           adminId: {
@@ -134,19 +137,19 @@ const getStudentConversations = async (studentId) => {
               $cond: [
                 { $eq: ["$sender", studentObjectId] },
                 "$receiver",
-                "$sender"
-              ]
-            }
-          }
-        }
+                "$sender",
+              ],
+            },
+          },
+        },
       },
       {
         $lookup: {
           from: "admins",
           localField: "adminId",
           foreignField: "_id",
-          as: "admin"
-        }
+          as: "admin",
+        },
       },
       { $unwind: "$admin" },
       {
@@ -155,7 +158,7 @@ const getStudentConversations = async (studentId) => {
           admin: {
             _id: "$admin._id",
             name: "$admin.name",
-            email: "$admin.email"
+            email: "$admin.email",
           },
           lastMessage: {
             _id: "$lastMessage._id",
@@ -164,19 +167,18 @@ const getStudentConversations = async (studentId) => {
             receiver: "$lastMessage.receiver",
             viewed: "$lastMessage.viewed",
             createdAt: "$lastMessage.createdAt",
-            updatedAt: "$lastMessage.updatedAt"
-          }
-        }
+            updatedAt: "$lastMessage.updatedAt",
+            imageAttached: "$lastMessage.imageAttached", // ✅ added
+          },
+        },
       },
-      { $sort: { "lastMessage.createdAt": -1 } }
+      { $sort: { "lastMessage.createdAt": -1 } },
     ]);
-
     return conversations;
   } catch (err) {
     throw new Error(err.message);
   }
 };
-
 
 // Mark messages as viewed
 const markMessagesAsViewed = async (studentId, adminId) => {
