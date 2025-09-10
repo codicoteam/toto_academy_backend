@@ -4,8 +4,17 @@ const mongoose = require("mongoose");
 // Send a message
 const sendMessage = async (data) => {
   try {
+
     const message = new Chat(data);
     await message.save();
+    
+    // Populate the references for immediate use
+    await message.populate([
+      { path: "sender", select: "firstName lastName profile_picture email" },
+      { path: "receiver", select: "firstName lastName profile_picture email" },
+      { path: "topicContentId", select: "title description" }
+    ]);
+    
     return message;
   } catch (err) {
     throw new Error(err.message);
@@ -22,15 +31,33 @@ const getConversation = async (studentId, adminId) => {
       ],
     })
       .sort({ createdAt: 1 })
-      .populate("sender")
-      .populate("receiver");
+      .populate("sender", "firstName lastName profile_picture email")
+      .populate("receiver", "firstName lastName profile_picture email")
+      .populate("topicContentId", "title description");
   } catch (err) {
     throw new Error(err.message);
   }
 };
 
-// Get conversations for admin (grouped by student with last message)
-// Get conversations for admin (grouped by student with last message)
+// Get messages related to specific topic content
+const getTopicContentMessages = async (topicContentId, lessonInfoId = null) => {
+  try {
+    const query = { topicContentId };
+    
+    if (lessonInfoId) {
+      query.lessonInfoId = lessonInfoId;
+    }
+    
+    return await Chat.find(query)
+      .sort({ createdAt: 1 })
+      .populate("sender", "firstName lastName profile_picture email")
+      .populate("receiver", "firstName lastName profile_picture email")
+      .populate("topicContentId", "title description");
+  } catch (err) {
+    throw new Error(err.message);
+  }
+};
+
 // Get conversations for admin (grouped by student with last message)
 const getAdminConversations = async (adminId) => {
   try {
@@ -65,6 +92,20 @@ const getAdminConversations = async (adminId) => {
               ],
             },
           },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                { 
+                  $and: [
+                    { $eq: ["$receiver", adminObjectId] },
+                    { $eq: ["$viewed", false] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
         },
       },
       {
@@ -94,12 +135,27 @@ const getAdminConversations = async (adminId) => {
             viewed: "$lastMessage.viewed",
             createdAt: "$lastMessage.createdAt",
             updatedAt: "$lastMessage.updatedAt",
-            imageAttached: "$lastMessage.imageAttached", // ✅ added
+            imageAttached: "$lastMessage.imageAttached",
+            topicContentId: "$lastMessage.topicContentId",
+            lessonInfoId: "$lastMessage.lessonInfoId",
+            messageType: "$lastMessage.messageType"
           },
+          unreadCount: 1
         },
       },
       { $sort: { "lastMessage.createdAt": -1 } },
     ]);
+
+    // Populate topicContentId for lastMessage
+    for (let conv of conversations) {
+      if (conv.lastMessage.topicContentId) {
+        const topicContent = await mongoose.model("topic_content").findById(
+          conv.lastMessage.topicContentId,
+          "title description"
+        );
+        conv.lastMessage.topicContent = topicContent;
+      }
+    }
 
     return conversations;
   } catch (err) {
@@ -141,6 +197,20 @@ const getStudentConversations = async (studentId) => {
               ],
             },
           },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                { 
+                  $and: [
+                    { $eq: ["$receiver", studentObjectId] },
+                    { $eq: ["$viewed", false] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
         },
       },
       {
@@ -157,7 +227,9 @@ const getStudentConversations = async (studentId) => {
           _id: 0,
           admin: {
             _id: "$admin._id",
-            name: "$admin.name",
+            firstName: "$admin.firstName",
+            lastName: "$admin.lastName",
+            profile_picture: "$admin.profile_picture",            
             email: "$admin.email",
           },
           lastMessage: {
@@ -168,12 +240,28 @@ const getStudentConversations = async (studentId) => {
             viewed: "$lastMessage.viewed",
             createdAt: "$lastMessage.createdAt",
             updatedAt: "$lastMessage.updatedAt",
-            imageAttached: "$lastMessage.imageAttached", // ✅ added
+            imageAttached: "$lastMessage.imageAttached",
+            topicContentId: "$lastMessage.topicContentId",
+            lessonInfoId: "$lastMessage.lessonInfoId",
+            messageType: "$lastMessage.messageType"
           },
+          unreadCount: 1
         },
       },
       { $sort: { "lastMessage.createdAt": -1 } },
     ]);
+    
+    // Populate topicContentId for lastMessage
+    for (let conv of conversations) {
+      if (conv.lastMessage.topicContentId) {
+        const topicContent = await mongoose.model("topic_content").findById(
+          conv.lastMessage.topicContentId,
+          "title description"
+        );
+        conv.lastMessage.topicContent = topicContent;
+      }
+    }
+    
     return conversations;
   } catch (err) {
     throw new Error(err.message);
@@ -181,15 +269,29 @@ const getStudentConversations = async (studentId) => {
 };
 
 // Mark messages as viewed
-const markMessagesAsViewed = async (studentId, adminId) => {
+const markMessagesAsViewed = async (userId, conversationPartnerId) => {
   try {
     const result = await Chat.updateMany(
       {
-        sender: studentId,
-        receiver: adminId,
+        sender: conversationPartnerId,
+        receiver: userId,
         viewed: false,
       },
       { $set: { viewed: true } }
+    );
+    return result;
+  } catch (err) {
+    throw new Error(err.message);
+  }
+};
+
+// Mark a specific message as viewed
+const markMessageAsViewed = async (messageId) => {
+  try {
+    const result = await Chat.findByIdAndUpdate(
+      messageId,
+      { $set: { viewed: true } },
+      { new: true }
     );
     return result;
   } catch (err) {
@@ -222,12 +324,28 @@ const deleteMessage = async (messageId) => {
   }
 };
 
+// Get unread message count for a user
+const getUnreadCount = async (userId) => {
+  try {
+    const count = await Chat.countDocuments({
+      receiver: userId,
+      viewed: false
+    });
+    return count;
+  } catch (err) {
+    throw new Error(err.message);
+  }
+};
+
 module.exports = {
   sendMessage,
   getConversation,
+  getTopicContentMessages,
   getAdminConversations,
   getStudentConversations,
   markMessagesAsViewed,
+  markMessageAsViewed,
   deleteConversation,
   deleteMessage,
+  getUnreadCount
 };

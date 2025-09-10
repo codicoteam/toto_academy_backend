@@ -35,6 +35,28 @@ router.get(
   }
 );
 
+// Get messages related to specific topic content
+router.get(
+  "/topic-content/:topicContentId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { topicContentId } = req.params;
+      const { lessonInfoId } = req.query;
+
+      const messages = await chatService.getTopicContentMessages(
+        topicContentId,
+        lessonInfoId || null
+      );
+      res
+        .status(200)
+        .json({ message: "Topic content messages retrieved", data: messages });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
 // Get conversations for admin (grouped by student)
 router.get(
   "/admin-conversations/:adminId",
@@ -45,7 +67,10 @@ router.get(
       const conversations = await chatService.getAdminConversations(adminId);
       res
         .status(200)
-        .json({ message: "Admin conversations retrieved", data: conversations });
+        .json({
+          message: "Admin conversations retrieved",
+          data: conversations,
+        });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -59,24 +84,32 @@ router.get(
   async (req, res) => {
     try {
       const { studentId } = req.params;
-      const conversations = await chatService.getStudentConversations(studentId);
+      const conversations = await chatService.getStudentConversations(
+        studentId
+      );
       res
         .status(200)
-        .json({ message: "Student conversations retrieved", data: conversations });
+        .json({
+          message: "Student conversations retrieved",
+          data: conversations,
+        });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   }
 );
 
-// Mark messages as viewed
+// Mark messages as viewed between two users
 router.put(
-  "/mark-viewed/:studentId/:adminId",
+  "/mark-viewed/:userId/:conversationPartnerId",
   authenticateToken,
   async (req, res) => {
     try {
-      const { studentId, adminId } = req.params;
-      const result = await chatService.markMessagesAsViewed(studentId, adminId);
+      const { userId, conversationPartnerId } = req.params;
+      const result = await chatService.markMessagesAsViewed(
+        userId,
+        conversationPartnerId
+      );
       res
         .status(200)
         .json({ message: "Messages marked as viewed", data: result });
@@ -85,6 +118,36 @@ router.put(
     }
   }
 );
+
+// Mark a specific message as viewed
+router.put(
+  "/mark-message-viewed/:messageId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { messageId } = req.params;
+      const result = await chatService.markMessageAsViewed(messageId);
+      res
+        .status(200)
+        .json({ message: "Message marked as viewed", data: result });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// Get unread message count for a user
+router.get("/unread-count/:userId", authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const count = await chatService.getUnreadCount(userId);
+    res
+      .status(200)
+      .json({ message: "Unread count retrieved", data: { count } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Delete a whole conversation
 router.delete(
