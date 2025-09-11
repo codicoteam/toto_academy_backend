@@ -9,6 +9,7 @@ const TopicContent = require("../models/topic_content_model");
 const Topic = require("../models/topic_in_subject");
 const Wallet = require("../models/wallet_model");
 const StudentTopicProgress = require("../models/student_topic_progress");
+const mongoose = require("mongoose");
 
 const getDashboardInfo = async () => {
   try {
@@ -427,6 +428,7 @@ const getStudentInfoOnLevel = async (level, studentId) => {
 
 
 // Add this function to your dashboard_services.js file
+// Add this function to your dashboard_services.js file
 const getStudentActivities = async (studentId) => {
   try {
     // Validate studentId
@@ -567,7 +569,17 @@ const getStudentActivities = async (studentId) => {
       {
         $group: {
           _id: '$subject.subjectName',
-          averageScore: { $avg: { $toDouble: '$percentange' } },
+          averageScore: {
+            $avg: {
+              $toDouble: {
+                $replaceAll: {
+                  input: { $toString: '$percentange' }, // convert everything to string first
+                  find: '%',
+                  replacement: ''
+                }
+              }
+            }
+          },
           examCount: { $sum: 1 }
         }
       }
@@ -693,6 +705,7 @@ const getStudentActivities = async (studentId) => {
     throw new Error(`Failed to fetch student activities: ${error.message}`);
   }
 };
+
 
 //get student activities in the whole system
 

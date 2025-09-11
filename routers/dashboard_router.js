@@ -4,6 +4,7 @@ const {
   getDashboardInfo,
   getWalletAnalytics,
   getStudentInfoOnLevel,
+  getStudentActivities
 } = require("../services/dashboard_services");
 
 const { authenticateToken } = require("../middlewares/auth");
