@@ -8,6 +8,7 @@ const Subject = require("../models/subjects_model");
 const TopicContent = require("../models/topic_content_model");
 const Topic = require("../models/topic_in_subject");
 const Wallet = require("../models/wallet_model");
+const StudentTopicProgress = require("../models/student_topic_progress");
 
 const getDashboardInfo = async () => {
   try {
@@ -358,9 +359,6 @@ const getWalletAnalytics = async () => {
     throw new Error(`Failed to fetch wallet analytics: ${error.message}`);
   }
 };
-
-
-
 const getStudentInfoOnLevel = async (level, studentId) => {
   try {
     // Verify student exists and matches the level
@@ -427,4 +425,275 @@ const getStudentInfoOnLevel = async (level, studentId) => {
   }
 };
 
-module.exports = { getDashboardInfo, getWalletAnalytics, getStudentInfoOnLevel };
+
+// Add this function to your dashboard_services.js file
+const getStudentActivities = async (studentId) => {
+  try {
+    // Validate studentId
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      throw new Error("Invalid student ID");
+    }
+
+    const [
+      studentInfo,
+      examRecords,
+      topicProgress,
+      walletInfo,
+      communities,
+      totalExamsTaken,
+      totalTopicsStarted,
+      totalTopicsCompleted,
+      totalCommunitiesJoined,
+      walletTransactions
+    ] = await Promise.all([
+      // Get basic student information
+      Student.findById(studentId)
+        .select('-password -resetPasswordVerificationSid -resetPasswordExpires')
+        .populate('progress'),
+      
+      // Get exam records with exam details
+      RecordExam.find({ studentId })
+        .populate('ExamId', 'title subject duration')
+        .sort({ createdAt: -1 })
+        .limit(10),
+      
+      // Get topic progress with topic details
+      StudentTopicProgress.find({ student: studentId })
+        .populate('topic', 'title subject')
+        .sort({ lastAccessed: -1 }),
+      
+      // Get wallet information
+      Wallet.findOne({ student: studentId })
+        .select('balance currency deposits withdrawals'),
+      
+      // Get communities the student is part of
+      Community.find({ students: studentId })
+        .populate('subject', 'subjectName')
+        .select('name subject Level'),
+      
+      // Count total exams taken
+      RecordExam.countDocuments({ studentId }),
+      
+      // Count topics started (in progress or completed)
+      StudentTopicProgress.countDocuments({ 
+        student: studentId, 
+        status: { $in: ['in_progress', 'completed'] } 
+      }),
+      
+      // Count topics completed
+      StudentTopicProgress.countDocuments({ 
+        student: studentId, 
+        status: 'completed' 
+      }),
+      
+      // Count communities joined
+      Community.countDocuments({ students: studentId }),
+      
+      // Get all wallet transactions (both deposits and withdrawals)
+      Wallet.aggregate([
+        { $match: { student: new mongoose.Types.ObjectId(studentId) } },
+        { $unwind: { path: '$deposits', preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: '$withdrawals', preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            transactions: {
+              $concatArrays: [
+                {
+                  $cond: [
+                    { $eq: [{ $ifNull: ['$deposits', []] }, []] },
+                    [],
+                    [{
+                      type: 'deposit',
+                      amount: '$deposits.amount',
+                      method: '$deposits.method',
+                      status: '$deposits.status',
+                      date: '$deposits.date',
+                      reference: '$deposits.reference'
+                    }]
+                  ]
+                },
+                {
+                  $cond: [
+                    { $eq: [{ $ifNull: ['$withdrawals', []] }, []] },
+                    [],
+                    [{
+                      type: 'withdrawal',
+                      amount: '$withdrawals.amount',
+                      method: '$withdrawals.method',
+                      status: '$withdrawals.status',
+                      date: '$withdrawals.date',
+                      reference: '$withdrawals.reference'
+                    }]
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        { $unwind: '$transactions' },
+        { $replaceRoot: { newRoot: '$transactions' } },
+        { $sort: { date: -1 } },
+        { $limit: 10 }
+      ])
+    ]);
+
+    // If student not found
+    if (!studentInfo) {
+      throw new Error("Student not found");
+    }
+
+    // Prepare data for charts
+    // 1. Performance by subject (exam scores)
+    const performanceBySubject = await RecordExam.aggregate([
+      { $match: { studentId: new mongoose.Types.ObjectId(studentId) } },
+      {
+        $lookup: {
+          from: 'exams',
+          localField: 'ExamId',
+          foreignField: '_id',
+          as: 'exam'
+        }
+      },
+      { $unwind: '$exam' },
+      {
+        $lookup: {
+          from: 'subjects',
+          localField: 'exam.subject',
+          foreignField: '_id',
+          as: 'subject'
+        }
+      },
+      { $unwind: '$subject' },
+      {
+        $group: {
+          _id: '$subject.subjectName',
+          averageScore: { $avg: { $toDouble: '$percentange' } },
+          examCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // 2. Progress by subject (topics)
+    const progressBySubject = await StudentTopicProgress.aggregate([
+      { $match: { student: new mongoose.Types.ObjectId(studentId) } },
+      {
+        $lookup: {
+          from: 'topics',
+          localField: 'topic',
+          foreignField: '_id',
+          as: 'topic'
+        }
+      },
+      { $unwind: '$topic' },
+      {
+        $lookup: {
+          from: 'subjects',
+          localField: 'topic.subject',
+          foreignField: '_id',
+          as: 'subject'
+        }
+      },
+      { $unwind: '$subject' },
+      {
+        $group: {
+          _id: '$subject.subjectName',
+          completed: {
+            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+          },
+          inProgress: {
+            $sum: { $cond: [{ $eq: ['$status', 'in_progress'] }, 1, 0] }
+          },
+          total: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // 3. Time spent by subject
+    const timeSpentBySubject = await StudentTopicProgress.aggregate([
+      { $match: { student: new mongoose.Types.ObjectId(studentId) } },
+      {
+        $lookup: {
+          from: 'topics',
+          localField: 'topic',
+          foreignField: '_id',
+          as: 'topic'
+        }
+      },
+      { $unwind: '$topic' },
+      {
+        $lookup: {
+          from: 'subjects',
+          localField: 'topic.subject',
+          foreignField: '_id',
+          as: 'subject'
+        }
+      },
+      { $unwind: '$subject' },
+      {
+        $group: {
+          _id: '$subject.subjectName',
+          totalTimeSpent: { $sum: '$timeSpent' }
+        }
+      }
+    ]);
+
+    // Format data for charts
+    const performanceChart = {
+      title: "Performance by Subject",
+      labels: performanceBySubject.map(item => item._id),
+      data: performanceBySubject.map(item => item.averageScore)
+    };
+
+    const progressChart = {
+      title: "Progress by Subject",
+      labels: progressBySubject.map(item => item._id),
+      datasets: [
+        {
+          label: "Completed",
+          data: progressBySubject.map(item => item.completed)
+        },
+        {
+          label: "In Progress",
+          data: progressBySubject.map(item => item.inProgress)
+        }
+      ]
+    };
+
+    const timeSpentChart = {
+      title: "Time Spent by Subject (minutes)",
+      labels: timeSpentBySubject.map(item => item._id),
+      data: timeSpentBySubject.map(item => item.totalTimeSpent)
+    };
+
+    return {
+      studentInfo,
+      activities: {
+        examRecords,
+        topicProgress,
+        walletInfo,
+        communities,
+        walletTransactions
+      },
+      summary: {
+        totalExamsTaken,
+        totalTopicsStarted,
+        totalTopicsCompleted,
+        totalCommunitiesJoined,
+        completionRate: totalTopicsStarted > 0 
+          ? Math.round((totalTopicsCompleted / totalTopicsStarted) * 100) 
+          : 0
+      },
+      charts: {
+        performanceChart,
+        progressChart,
+        timeSpentChart
+      }
+    };
+  } catch (error) {
+    throw new Error(`Failed to fetch student activities: ${error.message}`);
+  }
+};
+
+//get student activities in the whole system
+
+module.exports = { getDashboardInfo, getWalletAnalytics, getStudentInfoOnLevel, getStudentActivities};

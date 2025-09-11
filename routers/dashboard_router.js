@@ -65,4 +65,22 @@ router.get("/student-level-info", authenticateToken, async (req, res) => {
   }
 });
 
+// Add this route to your router file
+router.get("/student-activities/:studentId", authenticateToken, async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const studentActivities = await getStudentActivities(studentId);
+    
+    res.status(200).json({
+      status: "success",
+      data: studentActivities,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+});
+
 module.exports = router;

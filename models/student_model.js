@@ -49,6 +49,15 @@ const studentSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
+  profile_picture_status: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending",
+  },
+  profile_picture_rejection_reason: {
+    type: String,
+    required: false,
+  },
   next_of_kin_full_name: {
     type: String,
     required: true,

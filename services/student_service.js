@@ -285,6 +285,91 @@ const getDashboardStats = async () => {
   }
 };
 
+// Service to approve profile picture
+const approveProfilePicture = async (studentId) => {
+  try {
+    const updatedStudent = await Student.findByIdAndUpdate(
+      studentId,
+      {
+        profile_picture_status: "approved",
+        profile_picture_rejection_reason: undefined,
+      },
+      { new: true }
+    );
+
+    if (!updatedStudent) {
+      throw new Error("Student not found");
+    }
+
+    return updatedStudent;
+  } catch (error) {
+    throw new Error(`Failed to approve profile picture: ${error.message}`);
+  }
+};
+
+// Service to reject profile picture with reason
+const rejectProfilePicture = async (studentId, rejectionReason) => {
+  try {
+    if (!rejectionReason || rejectionReason.trim() === "") {
+      throw new Error("Rejection reason is required");
+    }
+
+    const updatedStudent = await Student.findByIdAndUpdate(
+      studentId,
+      {
+        profile_picture_status: "rejected",
+        profile_picture_rejection_reason: rejectionReason.trim(),
+      },
+      { new: true }
+    );
+
+    if (!updatedStudent) {
+      throw new Error("Student not found");
+    }
+
+    return updatedStudent;
+  } catch (error) {
+    throw new Error(`Failed to reject profile picture: ${error.message}`);
+  }
+};
+
+// Service to get students with pending profile pictures
+const getStudentsWithPendingProfilePictures = async () => {
+  try {
+    return await Student.find({
+      profile_picture: { $exists: true, $ne: null },
+      profile_picture_status: "pending",
+    }).select("firstName lastName email profile_picture");
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch students with pending profile pictures: ${error.message}`
+    );
+  }
+};
+
+// Service to update profile picture (for student use)
+const updateProfilePicture = async (studentId, profilePictureUrl) => {
+  try {
+    const updatedStudent = await Student.findByIdAndUpdate(
+      studentId,
+      {
+        profile_picture: profilePictureUrl,
+        profile_picture_status: "pending",
+        profile_picture_rejection_reason: undefined,
+      },
+      { new: true }
+    );
+
+    if (!updatedStudent) {
+      throw new Error("Student not found");
+    }
+
+    return updatedStudent;
+  } catch (error) {
+    throw new Error(`Failed to update profile picture: ${error.message}`);
+  }
+};
+
 module.exports = {
   getDashboardStats,
   createStudent,
@@ -298,4 +383,8 @@ module.exports = {
   generateAndSendPasswordResetOTP,
   verifyPasswordResetOTP,
   resetPassword,
+  approveProfilePicture,
+  rejectProfilePicture,
+  getStudentsWithPendingProfilePictures,
+  updateProfilePicture,
 };

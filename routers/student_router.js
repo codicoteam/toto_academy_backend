@@ -250,5 +250,91 @@ router.get("/dashboard", authenticateToken, async (req, res) => {
 });
 
 
+// Get students with pending profile pictures (admin only)
+router.get("/pending-profile-pictures", authenticateToken, async (req, res) => {
+  try {
+    const students = await studentService.getStudentsWithPendingProfilePictures();
+    res.status(200).json({
+      message: "Students with pending profile pictures retrieved successfully",
+      data: students
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error retrieving students with pending profile pictures",
+      error: error.message
+    });
+  }
+});
+
+// Approve profile picture (admin only)
+router.put("/approve-profile-picture/:id", authenticateToken, async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    const updatedStudent = await studentService.approveProfilePicture(studentId);
+    
+    res.status(200).json({
+      message: "Profile picture approved successfully",
+      data: updatedStudent
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "Error approving profile picture",
+      error: error.message
+    });
+  }
+});
+
+// Reject profile picture with reason (admin only)
+router.put("/reject-profile-picture/:id", authenticateToken, async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    const { rejection_reason } = req.body;
+    
+    if (!rejection_reason) {
+      return res.status(400).json({
+        message: "Rejection reason is required"
+      });
+    }
+    
+    const updatedStudent = await studentService.rejectProfilePicture(studentId, rejection_reason);
+    
+    res.status(200).json({
+      message: "Profile picture rejected successfully",
+      data: updatedStudent
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "Error rejecting profile picture",
+      error: error.message
+    });
+  }
+});
+
+// Update profile picture (student use)
+router.put("/update-profile-picture/:id", authenticateToken, async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    const { profile_picture_url } = req.body;
+    
+    if (!profile_picture_url) {
+      return res.status(400).json({
+        message: "Profile picture URL is required"
+      });
+    }
+    
+    const updatedStudent = await studentService.updateProfilePicture(studentId, profile_picture_url);
+    
+    res.status(200).json({
+      message: "Profile picture updated successfully and submitted for approval",
+      data: updatedStudent
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "Error updating profile picture",
+      error: error.message
+    });
+  }
+});
+
 
 module.exports = router;
