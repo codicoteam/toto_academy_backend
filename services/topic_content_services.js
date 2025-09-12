@@ -1,4 +1,6 @@
 const TopicContent = require("../models/topic_content_model"); // Adjust the path as needed
+const Student = require("../models/student_model");
+const Admin = require("../models/admin_model");
 
 // Create new topic content
 const createTopicContent = async (data) => {
@@ -21,18 +23,50 @@ const getAllTopicContents = async () => {
 };
 
 // Get topic content by ID
+
 const getTopicContentById = async (id) => {
   try {
+    // First, get the topic content with basic population
     const content = await TopicContent.findById(id).populate("Topic");
+    
     if (!content) {
       throw new Error("Topic content not found");
     }
+
+    // Process each lesson to populate user data
+    for (const lesson of content.lesson) {
+      // Populate comments
+      for (const comment of lesson.comments) {
+        const UserModel = comment.userType === "Admin" ? Admin : Student;
+        const userData = await UserModel.findById(comment.userId)
+          .select("firstName lastName profilePicture email profile_picture");
+        comment.userId = userData;
+      }
+
+      // Populate replies in comments
+      for (const comment of lesson.comments) {
+        for (const reply of comment.replies) {
+          const UserModel = reply.userType === "Admin" ? Admin : Student;
+          const userData = await UserModel.findById(reply.userId)
+            .select("firstName lastName profilePicture email profile_picture");
+          reply.userId = userData;
+        }
+      }
+
+      // Populate reactions
+      for (const reaction of lesson.reactions) {
+        const UserModel = reaction.userType === "Admin" ? Admin : Student;
+        const userData = await UserModel.findById(reaction.userId)
+          .select("firstName lastName profilePicture email profile_picture");
+        reaction.userId = userData;
+      }
+    }
+
     return content;
   } catch (error) {
     throw new Error(error.message);
   }
 };
-
 // ✅ Get topic contents by Topic ID
 // ✅ Get topic contents by Topic ID (non-deleted only)
 const getTopicContentByTopicId = async (topicId) => {
