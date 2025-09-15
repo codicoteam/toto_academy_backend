@@ -194,40 +194,80 @@ const addReaction = async (contentId, lessonIndex, reactionData) => {
 };
 
 // Get comments for a lesson
+// Assumes you have these models imported already
+// const TopicContent = require('...');
+// const Admin = require('...');
+// const Student = require('...');
+
+const pickUserFields = "firstName lastName profilePicture email profile_picture";
+
+const getModelForUserType = (userType) => (userType === "Admin" ? Admin : Student);
+
+const populateUser = async (userType, userId) => {
+  if (!userId) return null;
+  const Model = getModelForUserType(userType);
+  return Model.findById(userId).select(pickUserFields);
+};
+
+// Get comments for a lesson (with populated user fields on comments AND replies)
 const getComments = async (contentId, lessonIndex) => {
   try {
     const content = await TopicContent.findById(contentId);
-    if (!content) {
-      throw new Error("Topic content not found");
-    }
+    if (!content) throw new Error("Topic content not found");
 
-    if (!content.lesson[lessonIndex]) {
-      throw new Error("Lesson not found");
-    }
+    const lesson = content.lesson?.[lessonIndex];
+    if (!lesson) throw new Error("Lesson not found");
 
-    return content.lesson[lessonIndex].comments;
+    // Build a fully-populated comments array without mutating Mongoose docs
+    const populatedComments = await Promise.all(
+      lesson.comments.map(async (commentDoc) => {
+        const comment = commentDoc.toObject();
+
+        // Populate comment author
+        comment.userId = await populateUser(comment.userType, comment.userId);
+
+        // Populate each reply author
+        comment.replies = await Promise.all(
+          (comment.replies || []).map(async (replyDoc) => {
+            const reply = replyDoc; // already plain object from .toObject() above
+            reply.userId = await populateUser(reply.userType, reply.userId);
+            return reply;
+          })
+        );
+
+        return comment;
+      })
+    );
+
+    return populatedComments;
   } catch (error) {
     throw new Error(error.message);
   }
 };
 
-// Get reactions for a lesson
+// Get reactions for a lesson (with populated user fields)
 const getReactions = async (contentId, lessonIndex) => {
   try {
     const content = await TopicContent.findById(contentId);
-    if (!content) {
-      throw new Error("Topic content not found");
-    }
+    if (!content) throw new Error("Topic content not found");
 
-    if (!content.lesson[lessonIndex]) {
-      throw new Error("Lesson not found");
-    }
+    const lesson = content.lesson?.[lessonIndex];
+    if (!lesson) throw new Error("Lesson not found");
 
-    return content.lesson[lessonIndex].reactions;
+    const populatedReactions = await Promise.all(
+      lesson.reactions.map(async (reactionDoc) => {
+        const reaction = reactionDoc.toObject();
+        reaction.userId = await populateUser(reaction.userType, reaction.userId);
+        return reaction;
+      })
+    );
+
+    return populatedReactions;
   } catch (error) {
     throw new Error(error.message);
   }
 };
+
 
 // Move to trash (soft delete)
 const moveToTrash = async (id) => {
