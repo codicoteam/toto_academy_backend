@@ -131,6 +131,21 @@ router.delete("/deleteadmin/:id", authenticateToken, async (req, res) => {
   }
 });
 
+// Route to get one admin by ID (secured if needed)
+router.get("/admins/:id", authenticateToken, async (req, res) => {
+  try {
+    const admin = await adminService.getAdminById(req.params.id);
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+    res.status(200).json({ success: true, data: admin });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching admin", error: error.message });
+  }
+});
+
 // Forgot password - Request OTP
 router.post("/forgot-password", async (req, res) => {
   try {

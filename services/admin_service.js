@@ -19,6 +19,23 @@ const createAdmin = async (adminData) => {
   }
 };
 
+
+// Service to get one admin by ID
+const getAdminById = async (id) => {
+  try {
+    const admin = await Admin.findById(id);
+    if (!admin) {
+      throw new Error("Admin not found");
+    }
+    return admin;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
+
+
 const getAllAdmins = async () => {
   try {
     return await Admin.find();
@@ -173,5 +190,6 @@ module.exports = {
   deleteAdmin,
   generateAndSendPasswordResetOTP,
   verifyPasswordResetOTP,
-  resetPassword,
+  resetPassword,  
+  getAdminById
 };
