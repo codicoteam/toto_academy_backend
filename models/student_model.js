@@ -26,7 +26,7 @@ const studentSchema = new mongoose.Schema({
   level: {
     type: String,
     required: true,
-    enum: ["O Level", "A Level", "Form 1", "Form 2", "Form 3", "Form 4"],
+    enum: ["O Level", "A Level", "Others"],
   },
   address: {
     type: String,
