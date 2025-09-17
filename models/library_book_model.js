@@ -30,7 +30,7 @@ const librarySchema = new mongoose.Schema(
     },
     level: {
       type: String,
-      enum: ["O Level", "A Level", "Form 1", "Form 2", "Form 3", "Form 4"],
+      enum: ["O Level", "A Level", "Others"],
       required: true,
     },
     // Add likes array to track student likes

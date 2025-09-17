@@ -13,7 +13,7 @@ const subjectSchema = new mongoose.Schema(
     Level: {
       type: String,
       required: true,
-      enum: ["O Level", "A Level", "Form 1", "Form 2", "Form 3", "Form 4"],
+      enum: ["O Level", "A Level", "Others"],
     },
     showSubject: {
       type: Boolean,
