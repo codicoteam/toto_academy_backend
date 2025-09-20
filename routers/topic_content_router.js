@@ -58,11 +58,12 @@ router.get("/by-topic/:topicId", authenticateToken, async (req, res) => {
   }
 });
 
-
 // Get topic content by ID
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
-    const content = await topicContentService.getTopicContentById(req.params.id);
+    const content = await topicContentService.getTopicContentById(
+      req.params.id
+    );
     res.status(200).json({
       message: "Topic content retrieved successfully",
       data: content,
@@ -366,5 +367,24 @@ router.delete(
     }
   }
 );
+
+router.get("/lesson-info", authenticateToken, async (req, res) => {
+  try {
+    const { contentId, lessonId } = req.query;
+    const lesson = await topicContentService.getLessonInfoById(
+      contentId,
+      lessonId
+    );
+    res.status(200).json({
+      message: "Lesson info retrieved successfully",
+      data: lesson,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "Failed to retrieve lesson info",
+      error: error.message,
+    });
+  }
+});
 
 module.exports = router;

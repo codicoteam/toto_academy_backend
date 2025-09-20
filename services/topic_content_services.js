@@ -373,6 +373,51 @@ const deleteReaction = async (contentId, lessonIndex, reactionIndex) => {
   }
 };
 
+const getLessonInfo = async (contentId, lessonId) => {
+  try {
+    const content = await TopicContent.findById(contentId).populate("Topic");
+    if (!content) throw new Error("Topic content not found");
+
+    const lesson = content.lesson.id(lessonId);
+    if (!lesson) throw new Error("Lesson not found");
+
+    const populatedLesson = lesson.toObject();
+
+    // Populate comments
+    populatedLesson.comments = await Promise.all(
+      lesson.comments.map(async (commentDoc) => {
+        const comment = commentDoc.toObject();
+        comment.userId = await populateUser(comment.userType, comment.userId);
+
+        // Populate replies
+        comment.replies = await Promise.all(
+          (comment.replies || []).map(async (replyDoc) => {
+            const reply = replyDoc.toObject();
+            reply.userId = await populateUser(reply.userType, reply.userId);
+            return reply;
+          })
+        );
+
+        return comment;
+      })
+    );
+
+    // Populate reactions
+    populatedLesson.reactions = await Promise.all(
+      lesson.reactions.map(async (reactionDoc) => {
+        const reaction = reactionDoc.toObject();
+        reaction.userId = await populateUser(reaction.userType, reaction.userId);
+        return reaction;
+      })
+    );
+
+    return populatedLesson;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
 
 module.exports = {
   createTopicContent,
@@ -391,5 +436,6 @@ module.exports = {
   restoreFromTrash,
   getTrashedContents,
   deleteComment,     // <-- newly added
-  deleteReaction     // <-- newly added
+  deleteReaction,     // <-- newly added,
+  getLessonInfo
 };
