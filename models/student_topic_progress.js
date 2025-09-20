@@ -26,7 +26,7 @@ const studentTopicProgressSchema = new mongoose.Schema(
       enum: ["not_started", "in_progress", "completed"],
       default: "not_started",
     },
-    startedAt
+    startedAt: {
       type: Date,
       default: null,
     },
