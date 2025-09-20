@@ -20,18 +20,13 @@ const studentTopicProgressSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    // Optional: Store references to the actual lesson and subheading
-    currentLesson: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "topic_content.lesson",
-      default: null,
-    },
+  
     status: {
       type: String,
       enum: ["not_started", "in_progress", "completed"],
       default: "not_started",
     },
-    startedAt: {
+    startedAt
       type: Date,
       default: null,
     },

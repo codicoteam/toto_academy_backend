@@ -45,9 +45,7 @@ const updateTopicProgress = async (
         lessonData.subheadingIndex || progress.currentSubheadingIndex;
 
       // Optional: Store reference to the actual lesson
-      if (lessonData.lessonId) {
-        progress.currentLesson = lessonData.lessonId;
-      }
+
     }
 
     // Update daily progress (existing code)
@@ -72,7 +70,7 @@ const updateTopicProgress = async (
     progress.minimumTimeRequirementMet = uniqueDays >= 5;
 
     await progress.save();
-    return await progress.populate(["topic", "currentLesson"]);
+    return await progress.populate(["topic"]);
   } catch (error) {
     throw new Error(error.message);
   }
@@ -115,13 +113,7 @@ const getTopicProgress = async (studentId, topicId) => {
       topic: topicId,
     })
       .populate("topic")
-      .populate({
-        path: "currentLesson",
-        populate: {
-          path: "subHeading",
-          model: "topic_content.lesson.subHeading",
-        },
-      });
+
 
     if (!progress) {
       const topic = await Topic.findById(topicId);
@@ -134,7 +126,6 @@ const getTopicProgress = async (studentId, topicId) => {
         topicContent: topicContent,
         currentLessonIndex: 0,
         currentSubheadingIndex: 0,
-        currentLesson: topicContent ? topicContent.lesson[0] : null,
         status: "not_started",
         startedAt: null,
         completedAt: null,
@@ -145,17 +136,6 @@ const getTopicProgress = async (studentId, topicId) => {
       };
     }
 
-    // If currentLesson is not populated but we have indices, try to get the lesson
-    if (!progress.currentLesson && progress.currentLessonIndex >= 0) {
-      const topicContent = await TopicContent.findOne({ Topic: topicId });
-      if (
-        topicContent &&
-        topicContent.lesson.length > progress.currentLessonIndex
-      ) {
-        progress.currentLesson =
-          topicContent.lesson[progress.currentLessonIndex];
-      }
-    }
 
     return progress;
   } catch (error) {
@@ -192,17 +172,13 @@ const updateLessonProgress = async (
     progress.currentSubheadingIndex = subheadingIndex;
     progress.lastAccessed = new Date();
 
-    if (lessonId) {
-      progress.currentLesson = lessonId;
-    }
-
     if (progress.status === "not_started") {
       progress.status = "in_progress";
       progress.startedAt = new Date();
     }
 
     await progress.save();
-    return await progress.populate(["topic", "currentLesson"]);
+    return await progress.populate(["topic"]);
   } catch (error) {
     throw new Error(error.message);
   }
