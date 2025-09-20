@@ -8,7 +8,7 @@ const studentTopicProgressSchema = new mongoose.Schema(
     },
     topic: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Topic",
+      ref: "topic_content",
       required: true,
     },
     // Add these fields to track progress within the topic content
