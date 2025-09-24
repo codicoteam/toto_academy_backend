@@ -368,10 +368,10 @@ router.delete(
   }
 );
 
-router.get("/lesson-info", authenticateToken, async (req, res) => {
+router.get("/lessonInfo", authenticateToken, async (req, res) => {
   try {
     const { contentId, lessonId } = req.query;
-    const lesson = await topicContentService.getLessonInfoById(
+    const lesson = await topicContentService.getLessonInfo(
       contentId,
       lessonId
     );

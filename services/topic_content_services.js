@@ -69,9 +69,10 @@ const getTopicContentById = async (id) => {
 };
 // ✅ Get topic contents by Topic ID
 // ✅ Get topic contents by Topic ID (non-deleted only)
+// ✅ Get topic contents by Topic ID (with deep population)
 const getTopicContentByTopicId = async (topicId) => {
   try {
-    const contents = await TopicContent.find({
+    let contents = await TopicContent.find({
       Topic: topicId,
       deleted: false,
     }).populate("Topic");
@@ -79,6 +80,39 @@ const getTopicContentByTopicId = async (topicId) => {
     if (!contents || contents.length === 0) {
       throw new Error("No content found for the specified Topic ID");
     }
+
+    // Process each content
+    for (const content of contents) {
+      // Process each lesson
+      for (const lesson of content.lesson) {
+        // Populate comments
+        for (const comment of lesson.comments) {
+          const UserModel = comment.userType === "Admin" ? Admin : Student;
+          const userData = await UserModel.findById(comment.userId)
+            .select("firstName lastName profilePicture email profile_picture");
+          comment.userId = userData;
+        }
+
+        // Populate replies inside comments
+        for (const comment of lesson.comments) {
+          for (const reply of comment.replies) {
+            const UserModel = reply.userType === "Admin" ? Admin : Student;
+            const userData = await UserModel.findById(reply.userId)
+              .select("firstName lastName profilePicture email profile_picture");
+            reply.userId = userData;
+          }
+        }
+
+        // Populate reactions
+        for (const reaction of lesson.reactions) {
+          const UserModel = reaction.userType === "Admin" ? Admin : Student;
+          const userData = await UserModel.findById(reaction.userId)
+            .select("firstName lastName profilePicture email profile_picture");
+          reaction.userId = userData;
+        }
+      }
+    }
+
     return contents;
   } catch (error) {
     throw new Error(error.message);
