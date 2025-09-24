@@ -1,9 +1,9 @@
-const Admin = require('../models/admin_model');
+const Admin = require("../models/admin_model");
 const Community = require("../models/community_model");
 const Exam = require("../models/exam_model");
 const Book = require("../models/library_book_model");
 const RecordExam = require("../models/record_exam");
-const Student = require('../models/student_model');
+const Student = require("../models/student_model");
 const Subject = require("../models/subjects_model");
 const TopicContent = require("../models/topic_content_model");
 const Topic = require("../models/topic_in_subject");
@@ -31,7 +31,7 @@ const getDashboardInfo = async () => {
       studentsByLevel,
       examsBySubject,
       topicsBySubject,
-      booksByLevel  // Changed from communitiesByLevel to booksByLevel
+      booksByLevel, // Changed from communitiesByLevel to booksByLevel
     ] = await Promise.all([
       // Basic counts
       Admin.countDocuments(),
@@ -44,7 +44,7 @@ const getDashboardInfo = async () => {
       TopicContent.countDocuments(),
       Topic.countDocuments(),
       Wallet.countDocuments(),
-      Student.countDocuments({ subscription_status: 'active' }),
+      Student.countDocuments({ subscription_status: "active" }),
       Exam.countDocuments({ isPublished: true }),
       Book.countDocuments({ showBook: true }),
       Subject.countDocuments({ showSubject: true }),
@@ -54,9 +54,9 @@ const getDashboardInfo = async () => {
         {
           $group: {
             _id: "$level",
-            count: { $sum: 1 }
-          }
-        }
+            count: { $sum: 1 },
+          },
+        },
       ]),
 
       // Data for bar graph 2: Exams by subject
@@ -66,16 +66,16 @@ const getDashboardInfo = async () => {
             from: "subjects",
             localField: "subject",
             foreignField: "_id",
-            as: "subjectData"
-          }
+            as: "subjectData",
+          },
         },
         { $unwind: "$subjectData" },
         {
           $group: {
             _id: "$subjectData.subjectName",
-            count: { $sum: 1 }
-          }
-        }
+            count: { $sum: 1 },
+          },
+        },
       ]),
 
       // Data for pie chart 1: Topics by subject
@@ -85,16 +85,16 @@ const getDashboardInfo = async () => {
             from: "subjects",
             localField: "subject",
             foreignField: "_id",
-            as: "subjectData"
-          }
+            as: "subjectData",
+          },
         },
         { $unwind: "$subjectData" },
         {
           $group: {
             _id: "$subjectData.subjectName",
-            count: { $sum: 1 }
-          }
-        }
+            count: { $sum: 1 },
+          },
+        },
       ]),
 
       // REPLACED: Communities by level with Books by level
@@ -102,40 +102,40 @@ const getDashboardInfo = async () => {
         {
           $group: {
             _id: "$level",
-            count: { $sum: 1 }
-          }
-        }
-      ])
+            count: { $sum: 1 },
+          },
+        },
+      ]),
     ]);
 
     // Format data for frontend charts
     const barGraph1 = {
       title: "Students by Education Level",
-      labels: studentsByLevel.map(item => item._id),
-      data: studentsByLevel.map(item => item.count)
+      labels: studentsByLevel.map((item) => item._id),
+      data: studentsByLevel.map((item) => item.count),
     };
 
     const barGraph2 = {
       title: "Exams by Subject",
-      labels: examsBySubject.map(item => item._id),
-      data: examsBySubject.map(item => item.count)
+      labels: examsBySubject.map((item) => item._id),
+      data: examsBySubject.map((item) => item.count),
     };
 
     const pieChart1 = {
       title: "Topics Distribution by Subject",
-      data: topicsBySubject.map(item => ({
+      data: topicsBySubject.map((item) => ({
         name: item._id,
-        value: item.count
-      }))
+        value: item.count,
+      })),
     };
 
     // UPDATED: Changed to Books by Education Level
     const pieChart2 = {
       title: "Library Books by Education Level",
-      data: booksByLevel.map(item => ({
+      data: booksByLevel.map((item) => ({
         name: item._id,
-        value: item.count
-      }))
+        value: item.count,
+      })),
     };
 
     return {
@@ -149,7 +149,7 @@ const getDashboardInfo = async () => {
         subjects: totalSubjects,
         topicContents: totalTopicContents,
         topics: totalTopics,
-        wallets: totalWallets
+        wallets: totalWallets,
       },
       stats: {
         activeStudents,
@@ -158,14 +158,14 @@ const getDashboardInfo = async () => {
         visibleSubjects,
         activePercentage: totalStudents
           ? Math.round((activeStudents / totalStudents) * 100)
-          : 0
+          : 0,
       },
       charts: {
         barGraph1,
         barGraph2,
         pieChart1,
-        pieChart2
-      }
+        pieChart2,
+      },
     };
   } catch (error) {
     throw new Error(`Failed to fetch dashboard data: ${error.message}`);
@@ -360,23 +360,24 @@ const getWalletAnalytics = async () => {
     throw new Error(`Failed to fetch wallet analytics: ${error.message}`);
   }
 };
+
 const getStudentInfoOnLevel = async (level, studentId) => {
   try {
     // Verify student exists and matches the level
     const student = await Student.findOne({
       _id: studentId,
-      level: level
+      level: level,
     });
 
     if (!student) {
-      throw new Error('Student not found or level mismatch');
+      throw new Error("Student not found or level mismatch");
     }
 
     // Get 6 random subjects for the specified level
     const randomSubjects = await Subject.aggregate([
       { $match: { Level: level, showSubject: true } },
       { $sample: { size: 6 } },
-      { $project: { subjectName: 1, imageUrl: 1, Level: 1 } }
+      { $project: { subjectName: 1, imageUrl: 1, Level: 1 } },
     ]);
 
     // Get 8 random communities for the specified level
@@ -388,8 +389,8 @@ const getStudentInfoOnLevel = async (level, studentId) => {
           from: "subjects",
           localField: "subject",
           foreignField: "_id",
-          as: "subjectData"
-        }
+          as: "subjectData",
+        },
       },
       { $unwind: "$subjectData" },
       {
@@ -398,16 +399,25 @@ const getStudentInfoOnLevel = async (level, studentId) => {
           profilePicture: 1,
           Level: 1,
           subjectName: "$subjectData.subjectName",
-          studentsCount: { $size: "$students" }
-        }
-      }
+          studentsCount: { $size: "$students" },
+        },
+      },
     ]);
 
-    // Get 8 random books for the specified level
+    // Get 8 random books for the specified level with title, cover_image, file_path, likes
     const randomBooks = await Book.aggregate([
       { $match: { level: level, showBook: true } },
       { $sample: { size: 8 } },
-      { $project: { title: 1, coverImage: 1, level: 1, author: 1 } }
+      {
+        $project: {
+          title: 1,
+          cover_image: "$cover_image",
+          file_path: "$file_path",
+          likes: "$likes",
+          likesCount: 1,
+          level: 1,
+        },
+      },
     ]);
 
     return {
@@ -415,17 +425,18 @@ const getStudentInfoOnLevel = async (level, studentId) => {
         id: student._id,
         name: student.name,
         level: student.level,
-        subscription_status: student.subscription_status
+        subscription_status: student.subscription_status,
       },
       recommendedSubjects: randomSubjects,
       recommendedCommunities: randomCommunities,
-      recommendedBooks: randomBooks
+      recommendedBooks: randomBooks,
     };
   } catch (error) {
-    throw new Error(`Failed to fetch student level information: ${error.message}`);
+    throw new Error(
+      `Failed to fetch student level information: ${error.message}`
+    );
   }
 };
-
 
 // Add this function to your dashboard_services.js file
 // Add this function to your dashboard_services.js file
@@ -446,97 +457,102 @@ const getStudentActivities = async (studentId) => {
       totalTopicsStarted,
       totalTopicsCompleted,
       totalCommunitiesJoined,
-      walletTransactions
+      walletTransactions,
     ] = await Promise.all([
       // Get basic student information
       Student.findById(studentId)
-        .select('-password -resetPasswordVerificationSid -resetPasswordExpires')
-        .populate('progress'),
-      
+        .select("-password -resetPasswordVerificationSid -resetPasswordExpires")
+        .populate("progress"),
+
       // Get exam records with exam details
       RecordExam.find({ studentId })
-        .populate('ExamId', 'title subject duration')
+        .populate("ExamId", "title subject duration")
         .sort({ createdAt: -1 })
         .limit(10),
-      
+
       // Get topic progress with topic details
       StudentTopicProgress.find({ student: studentId })
-        .populate('topic', 'title subject')
+        .populate("topic", "title subject")
         .sort({ lastAccessed: -1 }),
-      
+
       // Get wallet information
-      Wallet.findOne({ student: studentId })
-        .select('balance currency deposits withdrawals'),
-      
+      Wallet.findOne({ student: studentId }).select(
+        "balance currency deposits withdrawals"
+      ),
+
       // Get communities the student is part of
       Community.find({ students: studentId })
-        .populate('subject', 'subjectName')
-        .select('name subject Level'),
-      
+        .populate("subject", "subjectName")
+        .select("name subject Level"),
+
       // Count total exams taken
       RecordExam.countDocuments({ studentId }),
-      
+
       // Count topics started (in progress or completed)
-      StudentTopicProgress.countDocuments({ 
-        student: studentId, 
-        status: { $in: ['in_progress', 'completed'] } 
+      StudentTopicProgress.countDocuments({
+        student: studentId,
+        status: { $in: ["in_progress", "completed"] },
       }),
-      
+
       // Count topics completed
-      StudentTopicProgress.countDocuments({ 
-        student: studentId, 
-        status: 'completed' 
+      StudentTopicProgress.countDocuments({
+        student: studentId,
+        status: "completed",
       }),
-      
+
       // Count communities joined
       Community.countDocuments({ students: studentId }),
-      
+
       // Get all wallet transactions (both deposits and withdrawals)
       Wallet.aggregate([
         { $match: { student: new mongoose.Types.ObjectId(studentId) } },
-        { $unwind: { path: '$deposits', preserveNullAndEmptyArrays: true } },
-        { $unwind: { path: '$withdrawals', preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: "$deposits", preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: "$withdrawals", preserveNullAndEmptyArrays: true } },
         {
           $project: {
             transactions: {
               $concatArrays: [
                 {
                   $cond: [
-                    { $eq: [{ $ifNull: ['$deposits', []] }, []] },
+                    { $eq: [{ $ifNull: ["$deposits", []] }, []] },
                     [],
-                    [{
-                      type: 'deposit',
-                      amount: '$deposits.amount',
-                      method: '$deposits.method',
-                      status: '$deposits.status',
-                      date: '$deposits.date',
-                      reference: '$deposits.reference'
-                    }]
-                  ]
+                    [
+                      {
+                        type: "deposit",
+                        amount: "$deposits.amount",
+                        method: "$deposits.method",
+                        status: "$deposits.status",
+                        date: "$deposits.date",
+                        reference: "$deposits.reference",
+                      },
+                    ],
+                  ],
                 },
                 {
                   $cond: [
-                    { $eq: [{ $ifNull: ['$withdrawals', []] }, []] },
+                    { $eq: [{ $ifNull: ["$withdrawals", []] }, []] },
                     [],
-                    [{
-                      type: 'withdrawal',
-                      amount: '$withdrawals.amount',
-                      method: '$withdrawals.method',
-                      status: '$withdrawals.status',
-                      date: '$withdrawals.date',
-                      reference: '$withdrawals.reference'
-                    }]
-                  ]
-                }
-              ]
-            }
-          }
+                    [
+                      {
+                        type: "withdrawal",
+                        amount: "$withdrawals.amount",
+                        method: "$withdrawals.method",
+                        status: "$withdrawals.status",
+                        date: "$withdrawals.date",
+                        reference: "$withdrawals.reference",
+                      },
+                    ],
+                  ],
+                },
+              ],
+            },
+          },
         },
-        { $unwind: '$transactions' },
-        { $replaceRoot: { newRoot: '$transactions' } },
+        { $unwind: "$transactions" },
+        { $replaceRoot: { newRoot: "$transactions" } },
         { $sort: { date: -1 } },
-        { $limit: 10 }
-      ])
+        { $limit: 10 },
+      ]),
     ]);
 
     // If student not found
@@ -550,39 +566,39 @@ const getStudentActivities = async (studentId) => {
       { $match: { studentId: new mongoose.Types.ObjectId(studentId) } },
       {
         $lookup: {
-          from: 'exams',
-          localField: 'ExamId',
-          foreignField: '_id',
-          as: 'exam'
-        }
+          from: "exams",
+          localField: "ExamId",
+          foreignField: "_id",
+          as: "exam",
+        },
       },
-      { $unwind: '$exam' },
+      { $unwind: "$exam" },
       {
         $lookup: {
-          from: 'subjects',
-          localField: 'exam.subject',
-          foreignField: '_id',
-          as: 'subject'
-        }
+          from: "subjects",
+          localField: "exam.subject",
+          foreignField: "_id",
+          as: "subject",
+        },
       },
-      { $unwind: '$subject' },
+      { $unwind: "$subject" },
       {
         $group: {
-          _id: '$subject.subjectName',
+          _id: "$subject.subjectName",
           averageScore: {
             $avg: {
               $toDouble: {
                 $replaceAll: {
-                  input: { $toString: '$percentange' }, // convert everything to string first
-                  find: '%',
-                  replacement: ''
-                }
-              }
-            }
+                  input: { $toString: "$percentange" }, // convert everything to string first
+                  find: "%",
+                  replacement: "",
+                },
+              },
+            },
           },
-          examCount: { $sum: 1 }
-        }
-      }
+          examCount: { $sum: 1 },
+        },
+      },
     ]);
 
     // 2. Progress by subject (topics)
@@ -590,34 +606,34 @@ const getStudentActivities = async (studentId) => {
       { $match: { student: new mongoose.Types.ObjectId(studentId) } },
       {
         $lookup: {
-          from: 'topics',
-          localField: 'topic',
-          foreignField: '_id',
-          as: 'topic'
-        }
+          from: "topics",
+          localField: "topic",
+          foreignField: "_id",
+          as: "topic",
+        },
       },
-      { $unwind: '$topic' },
+      { $unwind: "$topic" },
       {
         $lookup: {
-          from: 'subjects',
-          localField: 'topic.subject',
-          foreignField: '_id',
-          as: 'subject'
-        }
+          from: "subjects",
+          localField: "topic.subject",
+          foreignField: "_id",
+          as: "subject",
+        },
       },
-      { $unwind: '$subject' },
+      { $unwind: "$subject" },
       {
         $group: {
-          _id: '$subject.subjectName',
+          _id: "$subject.subjectName",
           completed: {
-            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
           },
           inProgress: {
-            $sum: { $cond: [{ $eq: ['$status', 'in_progress'] }, 1, 0] }
+            $sum: { $cond: [{ $eq: ["$status", "in_progress"] }, 1, 0] },
           },
-          total: { $sum: 1 }
-        }
-      }
+          total: { $sum: 1 },
+        },
+      },
     ]);
 
     // 3. Time spent by subject
@@ -625,56 +641,56 @@ const getStudentActivities = async (studentId) => {
       { $match: { student: new mongoose.Types.ObjectId(studentId) } },
       {
         $lookup: {
-          from: 'topics',
-          localField: 'topic',
-          foreignField: '_id',
-          as: 'topic'
-        }
+          from: "topics",
+          localField: "topic",
+          foreignField: "_id",
+          as: "topic",
+        },
       },
-      { $unwind: '$topic' },
+      { $unwind: "$topic" },
       {
         $lookup: {
-          from: 'subjects',
-          localField: 'topic.subject',
-          foreignField: '_id',
-          as: 'subject'
-        }
+          from: "subjects",
+          localField: "topic.subject",
+          foreignField: "_id",
+          as: "subject",
+        },
       },
-      { $unwind: '$subject' },
+      { $unwind: "$subject" },
       {
         $group: {
-          _id: '$subject.subjectName',
-          totalTimeSpent: { $sum: '$timeSpent' }
-        }
-      }
+          _id: "$subject.subjectName",
+          totalTimeSpent: { $sum: "$timeSpent" },
+        },
+      },
     ]);
 
     // Format data for charts
     const performanceChart = {
       title: "Performance by Subject",
-      labels: performanceBySubject.map(item => item._id),
-      data: performanceBySubject.map(item => item.averageScore)
+      labels: performanceBySubject.map((item) => item._id),
+      data: performanceBySubject.map((item) => item.averageScore),
     };
 
     const progressChart = {
       title: "Progress by Subject",
-      labels: progressBySubject.map(item => item._id),
+      labels: progressBySubject.map((item) => item._id),
       datasets: [
         {
           label: "Completed",
-          data: progressBySubject.map(item => item.completed)
+          data: progressBySubject.map((item) => item.completed),
         },
         {
           label: "In Progress",
-          data: progressBySubject.map(item => item.inProgress)
-        }
-      ]
+          data: progressBySubject.map((item) => item.inProgress),
+        },
+      ],
     };
 
     const timeSpentChart = {
       title: "Time Spent by Subject (minutes)",
-      labels: timeSpentBySubject.map(item => item._id),
-      data: timeSpentBySubject.map(item => item.totalTimeSpent)
+      labels: timeSpentBySubject.map((item) => item._id),
+      data: timeSpentBySubject.map((item) => item.totalTimeSpent),
     };
 
     return {
@@ -684,29 +700,34 @@ const getStudentActivities = async (studentId) => {
         topicProgress,
         walletInfo,
         communities,
-        walletTransactions
+        walletTransactions,
       },
       summary: {
         totalExamsTaken,
         totalTopicsStarted,
         totalTopicsCompleted,
         totalCommunitiesJoined,
-        completionRate: totalTopicsStarted > 0 
-          ? Math.round((totalTopicsCompleted / totalTopicsStarted) * 100) 
-          : 0
+        completionRate:
+          totalTopicsStarted > 0
+            ? Math.round((totalTopicsCompleted / totalTopicsStarted) * 100)
+            : 0,
       },
       charts: {
         performanceChart,
         progressChart,
-        timeSpentChart
-      }
+        timeSpentChart,
+      },
     };
   } catch (error) {
     throw new Error(`Failed to fetch student activities: ${error.message}`);
   }
 };
 
-
 //get student activities in the whole system
 
-module.exports = { getDashboardInfo, getWalletAnalytics, getStudentInfoOnLevel, getStudentActivities};
+module.exports = {
+  getDashboardInfo,
+  getWalletAnalytics,
+  getStudentInfoOnLevel,
+  getStudentActivities,
+};

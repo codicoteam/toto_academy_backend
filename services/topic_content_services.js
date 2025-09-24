@@ -102,7 +102,6 @@ const getTopicContentByTopicId = async (topicId) => {
             reply.userId = userData;
           }
         }
-
         // Populate reactions
         for (const reaction of lesson.reactions) {
           const UserModel = reaction.userType === "Admin" ? Admin : Student;
@@ -112,7 +111,6 @@ const getTopicContentByTopicId = async (topicId) => {
         }
       }
     }
-
     return contents;
   } catch (error) {
     throw new Error(error.message);
