@@ -405,15 +405,15 @@ const getStudentInfoOnLevel = async (level, studentId) => {
     ]);
 
     // Get 8 random books for the specified level with title, cover_image, file_path, likes
+    // Get 8 random books for the specified level with title, cover_image, file_path, likes
     const randomBooks = await Book.aggregate([
-      { $match: { level: level, showBook: true } },
+      { $match: { level: level } }, // 🔥 removed showBook
       { $sample: { size: 8 } },
       {
         $project: {
           title: 1,
-          cover_image: "$cover_image",
-          file_path: "$file_path",
-          likes: "$likes",
+          cover_image: 1,
+          file_path: 1,
           likesCount: 1,
           level: 1,
         },
@@ -425,7 +425,6 @@ const getStudentInfoOnLevel = async (level, studentId) => {
         id: student._id,
         name: student.name,
         level: student.level,
-        subscription_status: student.subscription_status,
       },
       recommendedSubjects: randomSubjects,
       recommendedCommunities: randomCommunities,
