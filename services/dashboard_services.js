@@ -360,84 +360,6 @@ const getWalletAnalytics = async () => {
     throw new Error(`Failed to fetch wallet analytics: ${error.message}`);
   }
 };
-
-const getStudentInfoOnLevel = async (level, studentId) => {
-  try {
-    // Verify student exists and matches the level
-    const student = await Student.findOne({
-      _id: studentId,
-      level: level,
-    });
-
-    if (!student) {
-      throw new Error("Student not found or level mismatch");
-    }
-
-    // Get 6 random subjects for the specified level
-    const randomSubjects = await Subject.aggregate([
-      { $match: { Level: level, showSubject: true } },
-      { $sample: { size: 6 } },
-      { $project: { subjectName: 1, imageUrl: 1, Level: 1 } },
-    ]);
-
-    // Get 8 random communities for the specified level
-    const randomCommunities = await Community.aggregate([
-      { $match: { Level: level, showCommunity: true } },
-      { $sample: { size: 8 } },
-      {
-        $lookup: {
-          from: "subjects",
-          localField: "subject",
-          foreignField: "_id",
-          as: "subjectData",
-        },
-      },
-      { $unwind: "$subjectData" },
-      {
-        $project: {
-          name: 1,
-          profilePicture: 1,
-          Level: 1,
-          subjectName: "$subjectData.subjectName",
-          studentsCount: { $size: "$students" },
-        },
-      },
-    ]);
-
-    // Get 8 random books for the specified level with title, cover_image, file_path, likes
-    // Get 8 random books for the specified level with title, cover_image, file_path, likes
-    const randomBooks = await Book.aggregate([
-      { $match: { level: level } }, // 🔥 removed showBook
-      { $sample: { size: 8 } },
-      {
-        $project: {
-          title: 1,
-          cover_image: 1,
-          file_path: 1,
-          likesCount: 1,
-          level: 1,
-        },
-      },
-    ]);
-
-    return {
-      studentInfo: {
-        id: student._id,
-        name: student.name,
-        level: student.level,
-      },
-      recommendedSubjects: randomSubjects,
-      recommendedCommunities: randomCommunities,
-      recommendedBooks: randomBooks,
-    };
-  } catch (error) {
-    throw new Error(
-      `Failed to fetch student level information: ${error.message}`
-    );
-  }
-};
-
-// Add this function to your dashboard_services.js file
 // Add this function to your dashboard_services.js file
 const getStudentActivities = async (studentId) => {
   try {
@@ -721,6 +643,157 @@ const getStudentActivities = async (studentId) => {
     throw new Error(`Failed to fetch student activities: ${error.message}`);
   }
 };
+
+
+
+const getStudentInfoOnLevel = async (level, studentId) => {
+  try {
+    // 1) Verify student exists and matches the level
+    const student = await Student.findOne(
+      { _id: studentId, level: level },
+      { firstName: 1, lastName: 1, email: 1, level: 1 }
+    );
+
+    if (!student) {
+      throw new Error("Student not found or level mismatch");
+    }
+
+    const fullName = `${student.firstName} ${student.lastName}`;
+
+    // 2) Fetch wallet balance as a number (default to 0 if wallet doesn't exist)
+    const walletDoc = await Wallet.findOne(
+      { student: student._id },
+      { balance: 1 }
+    );
+    const walletBalance = walletDoc?.balance ?? 0;
+
+    // 3) Get 6 random subjects for the specified level
+    const recommendedSubjects = await Subject.aggregate([
+      { $match: { Level: level, showSubject: true } },
+      { $sample: { size: 6 } },
+      { $project: { subjectName: 1, imageUrl: 1, Level: 1 } },
+    ]);
+
+    // 4) Get 8 random communities for the specified level (with subjectName + studentsCount)
+    const recommendedCommunities = await Community.aggregate([
+      { $match: { Level: level, showCommunity: true } },
+      { $sample: { size: 8 } },
+      {
+        $lookup: {
+          from: "subjects",
+          localField: "subject",
+          foreignField: "_id",
+          as: "subjectData",
+        },
+      },
+      { $unwind: "$subjectData" },
+      {
+        $project: {
+          name: 1,
+          profilePicture: 1,
+          Level: 1,
+          subjectName: "$subjectData.subjectName",
+          studentsCount: { $size: { $ifNull: ["$students", []] } },
+        },
+      },
+    ]);
+
+    // 5) Get 8 random books for the specified level (title, cover_image, file_path, likesCount)
+    const recommendedBooks = await Book.aggregate([
+      { $match: { level: level } }, // showBook removed per your note
+      { $sample: { size: 8 } },
+      {
+        $project: {
+          title: 1,
+          cover_image: 1,
+          file_path: 1,
+          likesCount: 1,
+          level: 1,
+        },
+      },
+    ]);
+
+    // 6) Get 6 random published exams for the student's level
+    const recommendedExams = await Exam.aggregate([
+      { $match: { level: level, isPublished: true } },
+      { $sample: { size: 6 } },
+      {
+        $project: {
+          title: 1,
+          durationInMinutes: 1,
+          level: 1,
+          subject: 1,
+          Topic: 1,
+          questionsCount: { $size: { $ifNull: ["$questions", []] } },
+          createdAt: 1,
+        },
+      },
+    ]);
+
+    // 7) Get up to 5 random topic contents currently "in_progress" for this student
+    // Note: StudentTopicProgress.topic references the "topic_content" model (collection "topic_contents").
+    // We only return 5 key fields from topic_content: _id, title, description, file_type, Topic
+    const inProgressTopics = await StudentTopicProgress.aggregate([
+      {
+        $match: {
+          student: new mongoose.Types.ObjectId(student._id),
+          status: "in_progress",
+        },
+      },
+      { $sample: { size: 5 } },
+      {
+        $lookup: {
+          from: "topic_contents", // collection name for model "topic_content"
+          localField: "topic",
+          foreignField: "_id",
+          as: "topicData",
+        },
+      },
+      { $unwind: "$topicData" },
+      {
+        $project: {
+          // progress fields to help resume
+          progressId: "$_id",
+          status: 1,
+          currentLessonIndex: 1,
+          currentSubheadingIndex: 1,
+          lastAccessed: 1,
+          timeSpent: 1,
+
+          // only 5 key fields from topic_content
+          topic: {
+            _id: "$topicData._id",
+            title: "$topicData.title",
+            description: "$topicData.description",
+            file_type: "$topicData.file_type",
+            Topic: "$topicData.Topic",
+          },
+        },
+      },
+    ]);
+
+    return {
+      studentInfo: {
+        id: student._id,
+        fullName,
+        email: student.email,
+        level: student.level,
+      },
+      walletBalance, // number
+      recommendedSubjects,
+      recommendedCommunities,
+      recommendedBooks,
+      recommendedExams,
+      inProgressTopics,
+    };
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch student level information: ${error.message}`
+    );
+  }
+};
+
+// Add this function to your dashboard_services.js file
 
 //get student activities in the whole system
 

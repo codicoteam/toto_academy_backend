@@ -20,7 +20,7 @@ const studentTopicProgressSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-  
+
     status: {
       type: String,
       enum: ["not_started", "in_progress", "completed"],
