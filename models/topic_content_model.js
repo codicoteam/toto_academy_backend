@@ -130,6 +130,7 @@ const lessonInfo = new mongoose.Schema({
     default: "no content",
   },
 
+
   comments: [commentSchema],
   reactions: [reactionSchema],
 });

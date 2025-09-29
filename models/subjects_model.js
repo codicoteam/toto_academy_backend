@@ -19,9 +19,14 @@ const subjectSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    topicRequests: {
+      type: Number,
+      default: 0, // start at 0
+    },
   },
   {
     timestamps: true,
   }
 );
+
 module.exports = mongoose.model("Subject", subjectSchema);

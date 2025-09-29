@@ -31,6 +31,18 @@ router.get("/getall", authenticateToken, async (req, res) => {
   }
 });
 
+router.get("/getallsubjects", async (req, res) => {
+  try {
+    const subjectList = await subjectService.getSubjectsForLandingPage();
+    res
+      .status(200)
+      .json({ message: "Subjects retrieved successfully", data: subjectList });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Failed to retrieve subjects", error: error.message });
+  }
+});
 // Get subject by ID
 router.get("/get/:id", authenticateToken, async (req, res) => {
   try {
@@ -71,6 +83,16 @@ router.delete("/delete/:id", authenticateToken, async (req, res) => {
     res
       .status(500)
       .json({ message: "Failed to delete subject", error: error.message });
+  }
+});
+
+// Increment topicRequests by 1
+router.post("/:id/topic-request", async (req, res) => {
+  try {
+    const subject = await incrementTopicRequests(req.params.id);
+    res.status(200).json(subject);
+  } catch (error) {
+    res.status(404).json({ message: error.message });
   }
 });
 

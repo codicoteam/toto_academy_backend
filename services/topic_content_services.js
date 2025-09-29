@@ -405,50 +405,48 @@ const deleteReaction = async (contentId, lessonIndex, reactionIndex) => {
   }
 };
 
+const { Types } = require("mongoose");
+
 const getLessonInfo = async (contentId, lessonId) => {
-  try {
-    const content = await TopicContent.findById(contentId).populate("Topic");
-    if (!content) throw new Error("Topic content not found");
+  if (!Types.ObjectId.isValid(contentId)) {
+    throw new Error("Invalid contentId");
+  }
+  if (!Types.ObjectId.isValid(lessonId)) {
+    throw new Error("Invalid lessonId");
+  }
 
-    const lesson = content.lesson.id(lessonId);
-    if (!lesson) throw new Error("Lesson not found");
+  const content = await TopicContent.findById(contentId).populate("Topic");
+  if (!content) throw new Error("Topic content not found");
 
-    const populatedLesson = lesson.toObject();
+  const lesson = content.lesson.id(lessonId);
+  if (!lesson) throw new Error("Lesson not found");
 
-    // Populate comments
-    populatedLesson.comments = await Promise.all(
-      lesson.comments.map(async (commentDoc) => {
-        const comment = commentDoc.toObject();
+  // ... the rest of your population logic
+  return {
+    ...lesson.toObject(),
+    comments: await Promise.all(
+      (lesson.comments || []).map(async (c) => {
+        const comment = c.toObject();
         comment.userId = await populateUser(comment.userType, comment.userId);
-
-        // Populate replies
         comment.replies = await Promise.all(
-          (comment.replies || []).map(async (replyDoc) => {
-            const reply = replyDoc.toObject();
+          (comment.replies || []).map(async (r) => {
+            const reply = r.toObject();
             reply.userId = await populateUser(reply.userType, reply.userId);
             return reply;
           })
         );
-
         return comment;
       })
-    );
-
-    // Populate reactions
-    populatedLesson.reactions = await Promise.all(
-      lesson.reactions.map(async (reactionDoc) => {
-        const reaction = reactionDoc.toObject();
+    ),
+    reactions: await Promise.all(
+      (lesson.reactions || []).map(async (r) => {
+        const reaction = r.toObject();
         reaction.userId = await populateUser(reaction.userType, reaction.userId);
         return reaction;
       })
-    );
-
-    return populatedLesson;
-  } catch (error) {
-    throw new Error(error.message);
-  }
+    ),
+  };
 };
-
 
 
 module.exports = {

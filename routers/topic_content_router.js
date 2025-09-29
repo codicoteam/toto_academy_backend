@@ -368,23 +368,47 @@ router.delete(
   }
 );
 
-router.get("/lessonInfo", authenticateToken, async (req, res) => {
+const { Types } = require("mongoose");
+
+// e.g. GET /api/v1/topic_content/lessonInfo/68529df98ba2617c3640aae2/68cb2c3d0e5717f9f19d8b55
+router.get("/lessonInfo/:contentId/:lessonId", authenticateToken, async (req, res) => {
   try {
-    const { contentId, lessonId } = req.query;
-    const lesson = await topicContentService.getLessonInfo(
-      contentId,
-      lessonId
-    );
+    const { contentId, lessonId } = req.params;
+
+    // Validate params
+    if (!Types.ObjectId.isValid(contentId)) {
+      return res.status(400).json({
+        message: "Failed to retrieve lesson info",
+        error: "Invalid contentId",
+      });
+    }
+    if (!Types.ObjectId.isValid(lessonId)) {
+      return res.status(400).json({
+        message: "Failed to retrieve lesson info",
+        error: "Invalid lessonId",
+      });
+    }
+
+    const lesson = await topicContentService.getLessonInfo(contentId, lessonId);
+    if (!lesson) {
+      return res.status(404).json({
+        message: "Failed to retrieve lesson info",
+        error: "Lesson not found",
+      });
+    }
+
     res.status(200).json({
       message: "Lesson info retrieved successfully",
       data: lesson,
     });
   } catch (error) {
-    res.status(400).json({
+    const notFound = /Topic content not found|Lesson not found/i.test(error.message);
+    res.status(notFound ? 404 : 400).json({
       message: "Failed to retrieve lesson info",
       error: error.message,
     });
   }
 });
+
 
 module.exports = router;

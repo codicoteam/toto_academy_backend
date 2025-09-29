@@ -20,6 +20,17 @@ const getAllSubjects = async () => {
   }
 };
 
+// Get 12 random subjects for landing page
+const getSubjectsForLandingPage = async () => {
+  try {
+    // Use MongoDB aggregation to randomly sample 12 documents
+    return await Subject.aggregate([{ $sample: { size: 12 } }]);
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
 // Get subject by ID
 const getSubjectById = async (id) => {
   try {
@@ -61,10 +72,30 @@ const deleteSubject = async (id) => {
   }
 };
 
+// Increment topicRequests by 1 for a subject
+const incrementTopicRequests = async (id) => {
+  try {
+    const updatedSubject = await Subject.findByIdAndUpdate(
+      id,
+      { $inc: { topicRequests: 1 } }, // atomic increment
+      { new: true }
+    );
+    if (!updatedSubject) {
+      throw new Error("Subject not found");
+    }
+    return updatedSubject;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+
 module.exports = {
   createSubject,
   getAllSubjects,
   getSubjectById,
   updateSubject,
+  getSubjectsForLandingPage,
   deleteSubject,
+  incrementTopicRequests
 };
