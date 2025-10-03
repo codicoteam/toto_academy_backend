@@ -28,28 +28,40 @@ const createCommunityMessage = async (data) => {
 const getCommunityMessages = async (communityId) => {
   try {
     const messages = await CommunityMessage.find({ community: communityId })
-      .populate([
-        { path: "community" },
-        {
-          path: "sender",
-          // Select different fields based on sender type
-          select: function () {
-            return this.senderModel === "Student"
-              ? "firstName lastName profilePicture"
-              : "name email profilePicture";
-          },
-        },
-      ])
+      .populate("community")
+      .populate("sender") // bring all sender fields first
       .sort({ timestamp: -1 });
 
     if (!messages || messages.length === 0) {
       throw new Error("No messages found for this community");
     }
-    return messages;
+
+    // Post-process sender fields based on senderModel
+    const formattedMessages = messages.map((msg) => {
+      if (msg.senderModel === "Student") {
+        msg.sender = {
+          _id: msg.sender._id,
+          firstName: msg.sender.firstName,
+          lastName: msg.sender.lastName,
+          profilePicture: msg.sender.profilePicture,
+        };
+      } else if (msg.senderModel === "Admin") {
+        msg.sender = {
+          _id: msg.sender._id,
+          name: msg.sender.name,
+          email: msg.sender.email,
+          profilePicture: msg.sender.profilePicture,
+        };
+      }
+      return msg;
+    });
+
+    return formattedMessages;
   } catch (error) {
     throw new Error(error.message);
   }
 };
+
 
 // Get message by ID
 const getMessageById = async (id) => {
