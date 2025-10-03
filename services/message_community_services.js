@@ -29,11 +29,11 @@ const getCommunityMessages = async (communityId) => {
   try {
     const messages = await CommunityMessage.find({ community: communityId })
       .populate("community")
-      .populate("sender") // bring all sender fields first
+      .populate("sender")
       .sort({ timestamp: -1 });
 
     if (!messages || messages.length === 0) {
-      throw new Error("No messages found for this community");
+      return []; // ✅ return empty array instead of throwing
     }
 
     // Post-process sender fields based on senderModel

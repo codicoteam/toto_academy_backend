@@ -34,13 +34,14 @@ router.get("/community/:communityId", async (req, res) => {
     const messages = await communityMessageService.getCommunityMessages(
       req.params.communityId
     );
+
     res.status(200).json({
       message: "Messages retrieved successfully",
-      data: messages,
+      data: messages, // could be [] if no messages
     });
   } catch (error) {
-    res.status(404).json({
-      message: "No messages found",
+    res.status(500).json({
+      message: "Error retrieving messages",
       error: error.message,
     });
   }
