@@ -93,11 +93,14 @@ const joinCommunity = async (communityId, studentId) => {
       throw new Error("Community not found");
     }
 
-    // Avoid duplicates
+    // If student already exists, just return community (don’t throw error)
     if (community.students.includes(studentId)) {
-      throw new Error("Student already joined the community");
+      return await Community.findById(communityId)
+        .populate("subject")
+        .populate("students", "firstName lastName");
     }
 
+    // Add student if not already joined
     community.students.push(studentId);
     await community.save();
 
@@ -108,6 +111,7 @@ const joinCommunity = async (communityId, studentId) => {
     throw new Error(error.message);
   }
 };
+
 
 // Remove a student from the community (leave community)
 const leaveCommunity = async (communityId, studentId) => {

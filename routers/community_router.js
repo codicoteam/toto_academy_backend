@@ -105,13 +105,22 @@ router.delete("/delete/:id", authenticateToken, async (req, res) => {
 router.post("/join/:communityId", authenticateToken, async (req, res) => {
   try {
     const { studentId } = req.body;
-    const updatedCommunity = await communityService.joinCommunity(
+    const community = await communityService.joinCommunity(
       req.params.communityId,
       studentId
     );
+
+    // If student already existed
+    if (community.students.some(s => s._id.toString() === studentId)) {
+      return res.status(200).json({
+        message: "Student already joined the community",
+        data: community,
+      });
+    }
+
     res.status(200).json({
       message: "Student joined the community successfully",
-      data: updatedCommunity,
+      data: community,
     });
   } catch (error) {
     res.status(400).json({
@@ -120,6 +129,7 @@ router.post("/join/:communityId", authenticateToken, async (req, res) => {
     });
   }
 });
+
 
 // Leave community (Remove student from community)
 router.post("/leave/:communityId", authenticateToken, async (req, res) => {
