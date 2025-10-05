@@ -29,28 +29,29 @@ const getCommunityMessages = async (communityId) => {
   try {
     const messages = await CommunityMessage.find({ community: communityId })
       .populate("community")
-      .populate("sender")
-      .sort({ timestamp: -1 });
+      .populate({
+        path: "sender",
+        select: "firstName lastName name email profilePicture profile_picture",
+      })
+      .sort({ timestamp: -1 })
+      .lean();
 
-    if (!messages || messages.length === 0) {
-      return []; // ✅ return empty array instead of throwing
-    }
+    if (!messages?.length) return [];
 
-    // Post-process sender fields based on senderModel
     const formattedMessages = messages.map((msg) => {
       if (msg.senderModel === "Student") {
         msg.sender = {
-          _id: msg.sender._id,
-          firstName: msg.sender.firstName,
-          lastName: msg.sender.lastName,
-          profilePicture: msg.sender.profilePicture,
+          _id: msg.sender?._id,
+          firstName: msg.sender?.firstName || "",
+          lastName: msg.sender?.lastName || "",
+          profilePicture: msg.sender?.profile_picture || "",
         };
       } else if (msg.senderModel === "Admin") {
         msg.sender = {
-          _id: msg.sender._id,
-          name: msg.sender.name,
-          email: msg.sender.email,
-          profilePicture: msg.sender.profilePicture,
+          _id: msg.sender?._id,
+          name: `${msg.sender?.firstName || ""} ${msg.sender?.lastName || ""}`.trim(),
+          email: msg.sender?.email || "",
+          profilePicture: msg.sender?.profilePicture || "",
         };
       }
       return msg;
@@ -61,6 +62,7 @@ const getCommunityMessages = async (communityId) => {
     throw new Error(error.message);
   }
 };
+
 
 
 // Get message by ID
