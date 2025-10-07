@@ -89,7 +89,7 @@ router.delete("/delete/:id", authenticateToken, async (req, res) => {
 // Increment topicRequests by 1
 router.post("/:id/topic-request", async (req, res) => {
   try {
-    const subject = await incrementTopicRequests(req.params.id);
+    const subject = await subjectService.incrementTopicRequests(req.params.id);
     res.status(200).json(subject);
   } catch (error) {
     res.status(404).json({ message: error.message });
