@@ -94,6 +94,23 @@ const getRandomFiveTopicsBySubjectId = async (subjectId) => {
 };
 
 
+// Increment topicRequests by 1 for a subject
+const incrementTopiComentcRequests = async (id) => {
+  try {
+    const updatedSubject = await Topic.findByIdAndUpdate(
+      id,
+      { $inc: { topicContentRequests: 1 } }, // atomic increment
+      { new: true }
+    );
+    if (!updatedSubject) {
+      throw new Error("Topic not found");
+    }
+    return updatedSubject;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
 module.exports = {
   createTopic,
   getAllTopics,
@@ -101,5 +118,6 @@ module.exports = {
   updateTopic,
   deleteTopic,
   getRandomFiveTopicsBySubjectId,
-  getTopicsBySubjectId
+  getTopicsBySubjectId,
+  incrementTopiComentcRequests
 };

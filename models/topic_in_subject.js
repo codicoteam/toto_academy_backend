@@ -10,7 +10,7 @@ const topicSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
-    subjectName : {
+    subjectName: {
       type: String,
       required: true,
     },
@@ -36,6 +36,10 @@ const topicSchema = new mongoose.Schema(
     subscriptionPeriod: {
       type: String,
       required: true, // Means by default it's not under subscription
+    },
+    topicContentRequests: {
+      type: Number,
+      default: 0, // start at 0
     },
   },
   {

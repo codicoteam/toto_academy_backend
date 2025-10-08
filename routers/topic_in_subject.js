@@ -107,4 +107,14 @@ router.delete("/delete/:id", authenticateToken, async (req, res) => {
   }
 });
 
+// Increment topicContentRequests by 1
+router.post("/:id/topic-content-request", async (req, res) => {
+  try {
+    const subject = await topicService.incrementTopiComentcRequests(req.params.id);
+    res.status(200).json(subject);
+  } catch (error) {
+    res.status(404).json({ message: error.message });
+  }
+});
+
 module.exports = router;
