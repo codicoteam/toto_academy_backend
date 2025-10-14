@@ -111,8 +111,11 @@ const addSubheading = new mongoose.Schema({
     type: String,
     required: false,
   },
-
   mcqQuestions: [mcqQuestionSchema],
+  timingArray: {
+    type: [Number],
+    default: [],
+  },
 });
 const lessonInfo = new mongoose.Schema({
   text: {
@@ -129,7 +132,6 @@ const lessonInfo = new mongoose.Schema({
     type: String,
     default: "no content",
   },
-
 
   comments: [commentSchema],
   reactions: [reactionSchema],
