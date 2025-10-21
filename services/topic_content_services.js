@@ -1,6 +1,7 @@
 const TopicContent = require("../models/topic_content_model"); // Adjust the path as needed
 const Student = require("../models/student_model");
 const Admin = require("../models/admin_model");
+const mongoose = require("mongoose");
 
 // Create new topic content
 const createTopicContent = async (data) => {
@@ -28,7 +29,7 @@ const getTopicContentById = async (id) => {
   try {
     // First, get the topic content with basic population
     const content = await TopicContent.findById(id).populate("Topic");
-    
+
     if (!content) {
       throw new Error("Topic content not found");
     }
@@ -38,8 +39,9 @@ const getTopicContentById = async (id) => {
       // Populate comments
       for (const comment of lesson.comments) {
         const UserModel = comment.userType === "Admin" ? Admin : Student;
-        const userData = await UserModel.findById(comment.userId)
-          .select("firstName lastName profilePicture email profile_picture");
+        const userData = await UserModel.findById(comment.userId).select(
+          "firstName lastName profilePicture email profile_picture"
+        );
         comment.userId = userData;
       }
 
@@ -47,8 +49,9 @@ const getTopicContentById = async (id) => {
       for (const comment of lesson.comments) {
         for (const reply of comment.replies) {
           const UserModel = reply.userType === "Admin" ? Admin : Student;
-          const userData = await UserModel.findById(reply.userId)
-            .select("firstName lastName profilePicture email profile_picture");
+          const userData = await UserModel.findById(reply.userId).select(
+            "firstName lastName profilePicture email profile_picture"
+          );
           reply.userId = userData;
         }
       }
@@ -56,8 +59,9 @@ const getTopicContentById = async (id) => {
       // Populate reactions
       for (const reaction of lesson.reactions) {
         const UserModel = reaction.userType === "Admin" ? Admin : Student;
-        const userData = await UserModel.findById(reaction.userId)
-          .select("firstName lastName profilePicture email profile_picture");
+        const userData = await UserModel.findById(reaction.userId).select(
+          "firstName lastName profilePicture email profile_picture"
+        );
         reaction.userId = userData;
       }
     }
@@ -88,8 +92,9 @@ const getTopicContentByTopicId = async (topicId) => {
         // Populate comments
         for (const comment of lesson.comments) {
           const UserModel = comment.userType === "Admin" ? Admin : Student;
-          const userData = await UserModel.findById(comment.userId)
-            .select("firstName lastName profilePicture email profile_picture");
+          const userData = await UserModel.findById(comment.userId).select(
+            "firstName lastName profilePicture email profile_picture"
+          );
           comment.userId = userData;
         }
 
@@ -97,16 +102,18 @@ const getTopicContentByTopicId = async (topicId) => {
         for (const comment of lesson.comments) {
           for (const reply of comment.replies) {
             const UserModel = reply.userType === "Admin" ? Admin : Student;
-            const userData = await UserModel.findById(reply.userId)
-              .select("firstName lastName profilePicture email profile_picture");
+            const userData = await UserModel.findById(reply.userId).select(
+              "firstName lastName profilePicture email profile_picture"
+            );
             reply.userId = userData;
           }
         }
         // Populate reactions
         for (const reaction of lesson.reactions) {
           const UserModel = reaction.userType === "Admin" ? Admin : Student;
-          const userData = await UserModel.findById(reaction.userId)
-            .select("firstName lastName profilePicture email profile_picture");
+          const userData = await UserModel.findById(reaction.userId).select(
+            "firstName lastName profilePicture email profile_picture"
+          );
           reaction.userId = userData;
         }
       }
@@ -231,9 +238,11 @@ const addReaction = async (contentId, lessonIndex, reactionData) => {
 // const Admin = require('...');
 // const Student = require('...');
 
-const pickUserFields = "firstName lastName profilePicture email profile_picture";
+const pickUserFields =
+  "firstName lastName profilePicture email profile_picture";
 
-const getModelForUserType = (userType) => (userType === "Admin" ? Admin : Student);
+const getModelForUserType = (userType) =>
+  userType === "Admin" ? Admin : Student;
 
 const populateUser = async (userType, userId) => {
   if (!userId) return null;
@@ -289,7 +298,10 @@ const getReactions = async (contentId, lessonIndex) => {
     const populatedReactions = await Promise.all(
       lesson.reactions.map(async (reactionDoc) => {
         const reaction = reactionDoc.toObject();
-        reaction.userId = await populateUser(reaction.userType, reaction.userId);
+        reaction.userId = await populateUser(
+          reaction.userType,
+          reaction.userId
+        );
         return reaction;
       })
     );
@@ -299,7 +311,6 @@ const getReactions = async (contentId, lessonIndex) => {
     throw new Error(error.message);
   }
 };
-
 
 // Move to trash (soft delete)
 const moveToTrash = async (id) => {
@@ -364,9 +375,6 @@ const deleteTopicContent = async (id) => {
   return await moveToTrash(id);
 };
 
-
-
-
 // Delete a comment from a lesson
 const deleteComment = async (contentId, lessonIndex, commentIndex) => {
   try {
@@ -407,47 +415,362 @@ const deleteReaction = async (contentId, lessonIndex, reactionIndex) => {
 
 const { Types } = require("mongoose");
 
+const safeToObject = (v) =>
+  v && typeof v.toObject === "function" ? v.toObject() : v;
+
 const getLessonInfo = async (contentId, lessonId) => {
-  if (!Types.ObjectId.isValid(contentId)) {
-    throw new Error("Invalid contentId");
-  }
-  if (!Types.ObjectId.isValid(lessonId)) {
-    throw new Error("Invalid lessonId");
-  }
+  if (!Types.ObjectId.isValid(contentId)) throw new Error("Invalid contentId");
+  if (!Types.ObjectId.isValid(lessonId)) throw new Error("Invalid lessonId");
 
   const content = await TopicContent.findById(contentId).populate("Topic");
   if (!content) throw new Error("Topic content not found");
 
-  const lesson = content.lesson.id(lessonId);
+  const lesson = content.lesson.id(lessonId); // or content.lessons.id(...) if that’s your path
   if (!lesson) throw new Error("Lesson not found");
 
-  // ... the rest of your population logic
-  return {
-    ...lesson.toObject(),
-    comments: await Promise.all(
-      (lesson.comments || []).map(async (c) => {
-        const comment = c.toObject();
+  const base = safeToObject(lesson);
+
+  const comments = await Promise.all(
+    (base.comments || []).map(async (c) => {
+      const comment = safeToObject(c);
+      if (comment?.userId) {
         comment.userId = await populateUser(comment.userType, comment.userId);
-        comment.replies = await Promise.all(
-          (comment.replies || []).map(async (r) => {
-            const reply = r.toObject();
+      }
+
+      comment.replies = await Promise.all(
+        (comment.replies || []).map(async (r) => {
+          const reply = safeToObject(r);
+          if (reply?.userId) {
             reply.userId = await populateUser(reply.userType, reply.userId);
-            return reply;
-          })
+          }
+          return reply;
+        })
+      );
+
+      return comment;
+    })
+  );
+
+  const reactions = await Promise.all(
+    (base.reactions || []).map(async (r) => {
+      const reaction = safeToObject(r);
+      if (reaction?.userId) {
+        reaction.userId = await populateUser(
+          reaction.userType,
+          reaction.userId
         );
-        return comment;
-      })
-    ),
-    reactions: await Promise.all(
-      (lesson.reactions || []).map(async (r) => {
-        const reaction = r.toObject();
-        reaction.userId = await populateUser(reaction.userType, reaction.userId);
-        return reaction;
-      })
-    ),
-  };
+      }
+      return reaction;
+    })
+  );
+
+  return { ...base, comments, reactions };
 };
 
+const {
+  Types: { ObjectId },
+} = mongoose;
+
+/**
+ * Get all topic contents (non-deleted) returning ALL top-level fields,
+ * but within `lesson` only `_id` and `text`.
+ */
+const getAllTopicContentsLeanLessons = async () => {
+  try {
+    const results = await TopicContent.aggregate([
+      { $match: { deleted: false } },
+      // populate Topic
+      {
+        $lookup: {
+          from: "topics",
+          localField: "Topic",
+          foreignField: "_id",
+          as: "Topic",
+        },
+      },
+      { $unwind: { path: "$Topic", preserveNullAndEmptyArrays: true } },
+      // project lessons to only {_id, text} while keeping all other fields
+      {
+        $addFields: {
+          lesson: {
+            $map: {
+              input: "$lesson",
+              as: "l",
+              in: { _id: "$$l._id", text: "$$l.text" },
+            },
+          },
+        },
+      },
+    ]).exec();
+
+    return results;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+/**
+ * Get topic contents by Topic ID (non-deleted) returning ALL top-level fields,
+ * but within `lesson` only `_id` and `text`.
+ */
+const getTopicContentsByTopicIdLeanLessons = async (topicId) => {
+  try {
+    const results = await TopicContent.aggregate([
+      { $match: { deleted: false, Topic: new ObjectId(topicId) } },
+      // populate Topic
+      {
+        $lookup: {
+          from: "topics",
+          localField: "Topic",
+          foreignField: "_id",
+          as: "Topic",
+        },
+      },
+      { $unwind: { path: "$Topic", preserveNullAndEmptyArrays: true } },
+      // project lessons to only {_id, text} while keeping all other fields
+      {
+        $addFields: {
+          lesson: {
+            $map: {
+              input: "$lesson",
+              as: "l",
+              in: { _id: "$$l._id", text: "$$l.text" },
+            },
+          },
+        },
+      },
+    ]).exec();
+
+    if (!results || results.length === 0) {
+      throw new Error("No content found for the specified Topic ID");
+    }
+
+    return results;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+const getTopicContentLeanLessonsById = async (id) => {
+  try {
+    if (!ObjectId.isValid(id)) {
+      throw new Error("Invalid topic content ID");
+    }
+
+    const [doc] = await TopicContent.aggregate([
+      { $match: { _id: new ObjectId(id), deleted: false } },
+      // Populate `Topic`
+      {
+        $lookup: {
+          from: "topics",
+          localField: "Topic",
+          foreignField: "_id",
+          as: "Topic",
+        },
+      },
+      { $unwind: { path: "$Topic", preserveNullAndEmptyArrays: true } },
+      // Keep all top-level fields but slim down lessons to {_id, text}
+      {
+        $addFields: {
+          lesson: {
+            $map: {
+              input: "$lesson",
+              as: "l",
+              in: { _id: "$$l._id", text: "$$l.text" },
+            },
+          },
+        },
+      },
+    ]).exec();
+
+    if (!doc) {
+      throw new Error("Topic content not found");
+    }
+
+    return doc; // a single object
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+/**
+ * Update a lesson inside a topic_content document.
+ * Targets the lesson by contentId + lessonId and updates only provided fields.
+ *
+ * @param {string} contentId - TopicContent _id
+ * @param {string} lessonId  - lesson subdocument _id
+ * @param {object} payload   - fields to update on the lesson:
+ *   Allowed: { text, audio, video, subHeading }
+ *   - text: String
+ *   - audio: String
+ *   - video: String
+ *   - subHeading: Array (REPLACES the entire subHeading array if provided)
+ *
+ * @returns {Promise<object>} The updated lesson object (and optionally Topic, if needed)
+ */
+const updateLessonContent = async (contentId, lessonId, payload = {}) => {
+  if (!Types.ObjectId.isValid(contentId)) throw new Error("Invalid contentId");
+  if (!Types.ObjectId.isValid(lessonId)) throw new Error("Invalid lessonId");
+
+  const ALLOWED = ["text", "audio", "video", "subHeading"];
+  const setOps = {};
+  for (const key of ALLOWED) {
+    if (Object.prototype.hasOwnProperty.call(payload, key)) {
+      setOps[`lesson.$.${key}`] = payload[key];
+    }
+  }
+  if (Object.keys(setOps).length === 0) {
+    throw new Error(
+      "No valid fields to update. Allowed: text, audio, video, subHeading"
+    );
+  }
+
+  const res = await TopicContent.updateOne(
+    { _id: contentId, deleted: false, "lesson._id": lessonId },
+    { $set: setOps }
+  );
+
+  if (res.matchedCount === 0) {
+    const content = await TopicContent.findById(contentId).lean();
+    if (!content) throw new Error("Topic content not found");
+    if (content.deleted) throw new Error("Topic content is deleted");
+    throw new Error("Lesson not found");
+  }
+
+  // You can inspect res.modifiedCount (0 means same values as before)
+  return { matchedCount: res.matchedCount, modifiedCount: res.modifiedCount };
+};
+
+/**
+ * Reorder lessons within a topic_content by providing the desired order of lesson IDs.
+ * @param {String} topicContentId - _id of the topic_content doc
+ * @param {String[]} orderedLessonIds - array of lesson _id strings in the final order
+ * @returns {Promise<Object>} - the updated topic_content (only _id and lesson _id order)
+ */
+async function reorderLessons(topicContentId, orderedLessonIds) {
+  if (!mongoose.isValidObjectId(topicContentId)) {
+    throw new Error("Invalid topic_content id");
+  }
+  if (!Array.isArray(orderedLessonIds) || orderedLessonIds.length === 0) {
+    throw new Error("`order` must be a non-empty array of lesson ids");
+  }
+
+  // IMPORTANT: load full lesson subdocs so validation passes
+  const doc = await TopicContent.findById(topicContentId);
+  if (!doc) throw new Error("topic_content not found");
+
+  const existingIds = doc.lesson.map((l) => String(l._id));
+  const incomingIds = orderedLessonIds.map(String);
+
+  // Validate 1: same size
+  if (existingIds.length !== incomingIds.length) {
+    throw new Error(
+      "`order` must include every existing lesson id exactly once"
+    );
+  }
+  // Validate 2: same set
+  const sameSet =
+    [...existingIds].sort().join(",") === [...incomingIds].sort().join(",");
+  if (!sameSet) {
+    throw new Error("`order` must match the set of existing lesson ids");
+  }
+
+  // Index the full subdocs by id
+  const byId = new Map(doc.lesson.map((l) => [String(l._id), l]));
+
+  // Rebuild in new order using the full subdocs (not just ids!)
+  doc.lesson = incomingIds.map((id) => byId.get(id));
+
+  // Optional: be explicit
+  doc.markModified("lesson");
+
+  await doc.save(); // validates with all required fields present
+
+  return {
+    _id: doc._id,
+    lesson: doc.lesson.map((l) => ({ _id: l._id })),
+  };
+}
+
+
+
+/**
+ * Add a lesson to a topic_content document.
+ * @param {string} topicContentId - The _id of the topic_content document
+ * @param {object} lessonPayload  - The lessonInfo payload (text, subHeading, audio, video, etc.)
+ * @returns {Promise<{ topicContent: object, lesson: object }>}
+ */
+const addLessonInfo = async (topicContentId, lessonPayload = {}) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(topicContentId)) {
+      throw new Error("Invalid topic_content id");
+    }
+
+    // Find the parent doc (and ensure not trashed)
+    const content = await TopicContent.findOne({
+      _id: topicContentId,
+      deleted: false,
+    });
+
+    if (!content) {
+      throw new Error("Topic content not found or is in trash");
+    }
+
+    // Normalize payload so we don't store undefined (schema defaults still apply)
+    const lesson = {
+      text: lessonPayload.text ?? "",
+      subHeading: Array.isArray(lessonPayload.subHeading)
+        ? lessonPayload.subHeading
+        : [], // expects array of addSubheading subdocs
+      audio: lessonPayload.audio ?? undefined, // let schema default to "no content" if undefined
+      video: lessonPayload.video ?? undefined, // let schema default to "no content" if undefined
+
+      // Never accept comments/reactions from the client when creating a lesson
+      comments: [],
+      reactions: [],
+    };
+
+    // Push and save (lets mongoose run validators)
+    content.lesson.push(lesson);
+    await content.save();
+
+    const newLesson = content.lesson[content.lesson.length - 1]; // the one we just added
+    return { topicContent: content, lesson: newLesson };
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+const deleteLessonInfo = async (topicContentId, lessonId) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(topicContentId)) {
+      throw new Error("Invalid topic_content id");
+    }
+    if (!mongoose.Types.ObjectId.isValid(lessonId)) {
+      throw new Error("Invalid lesson id");
+    }
+
+    const content = await TopicContent.findOne({
+      _id: topicContentId,
+      deleted: false,
+    }).select("lesson");
+
+    if (!content) throw new Error("Topic content not found or is in trash");
+
+    const lesson = content.lesson.id(lessonId);
+    if (!lesson) throw new Error("Lesson not found");
+
+    const deletedLesson = lesson.toObject();
+
+    // Mongoose 6/7 way:
+    lesson.deleteOne();           // <- replace .remove()
+    await content.save();
+
+    return { topicContent: content, deletedLesson };
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
 
 module.exports = {
   createTopicContent,
@@ -465,7 +788,14 @@ module.exports = {
   moveToTrash,
   restoreFromTrash,
   getTrashedContents,
-  deleteComment,     // <-- newly added
-  deleteReaction,     // <-- newly added,
-  getLessonInfo
+  deleteComment, // <-- newly added
+  deleteReaction, // <-- newly added,
+  getLessonInfo,
+  getAllTopicContentsLeanLessons,
+  getTopicContentsByTopicIdLeanLessons,
+  getTopicContentLeanLessonsById,
+  updateLessonContent,
+  reorderLessons,
+  addLessonInfo,
+  deleteLessonInfo
 };

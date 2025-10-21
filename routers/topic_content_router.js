@@ -371,42 +371,212 @@ router.delete(
 const { Types } = require("mongoose");
 
 // e.g. GET /api/v1/topic_content/lessonInfo/68529df98ba2617c3640aae2/68cb2c3d0e5717f9f19d8b55
-router.get("/lessonInfo/:contentId/:lessonId", authenticateToken, async (req, res) => {
+router.get(
+  "/lessonInfo/:contentId/:lessonId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { contentId, lessonId } = req.params;
+
+      // Validate params
+      if (!Types.ObjectId.isValid(contentId)) {
+        return res.status(400).json({
+          message: "Failed to retrieve lesson info",
+          error: "Invalid contentId",
+        });
+      }
+      if (!Types.ObjectId.isValid(lessonId)) {
+        return res.status(400).json({
+          message: "Failed to retrieve lesson info",
+          error: "Invalid lessonId",
+        });
+      }
+
+      const lesson = await topicContentService.getLessonInfo(
+        contentId,
+        lessonId
+      );
+      if (!lesson) {
+        return res.status(404).json({
+          message: "Failed to retrieve lesson info",
+          error: "Lesson not found",
+        });
+      }
+
+      res.status(200).json({
+        message: "Lesson info retrieved successfully",
+        data: lesson,
+      });
+    } catch (error) {
+      const notFound = /Topic content not found|Lesson not found/i.test(
+        error.message
+      );
+      res.status(notFound ? 404 : 400).json({
+        message: "Failed to retrieve lesson info",
+        error: error.message,
+      });
+    }
+  }
+);
+
+// GET /topic-contents/lean
+router.get("/topic-contents/lean", async (req, res) => {
   try {
-    const { contentId, lessonId } = req.params;
+    const data = await topicContentService.getAllTopicContentsLeanLessons();
+    res.status(200).json(data);
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Server error" });
+  }
+});
 
-    // Validate params
-    if (!Types.ObjectId.isValid(contentId)) {
-      return res.status(400).json({
-        message: "Failed to retrieve lesson info",
-        error: "Invalid contentId",
-      });
-    }
-    if (!Types.ObjectId.isValid(lessonId)) {
-      return res.status(400).json({
-        message: "Failed to retrieve lesson info",
-        error: "Invalid lessonId",
-      });
-    }
+// GET /topic-contents/topic/:topicId/lean
+router.get("/topic-contents/topic/:topicId/lean", async (req, res) => {
+  try {
+    const { topicId } = req.params;
+    const data = await topicContentService.getTopicContentsByTopicIdLeanLessons(
+      topicId
+    );
+    res.status(200).json(data);
+  } catch (err) {
+    const msg = err.message || "Server error";
+    const code = /No content found/.test(msg) ? 404 : 500;
+    res.status(code).json({ message: msg });
+  }
+});
 
-    const lesson = await topicContentService.getLessonInfo(contentId, lessonId);
-    if (!lesson) {
-      return res.status(404).json({
-        message: "Failed to retrieve lesson info",
-        error: "Lesson not found",
-      });
+router.get("/topic-contents/:id/lean", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doc = await topicContentService.getTopicContentLeanLessonsById(id);
+    return res.status(200).json(doc);
+  } catch (err) {
+    const msg = err.message || "Server error";
+    if (msg === "Invalid topic content ID") {
+      return res.status(400).json({ message: msg });
     }
+    if (msg === "Topic content not found") {
+      return res.status(404).json({ message: msg });
+    }
+    return res.status(500).json({ message: msg });
+  }
+});
 
+// Consistent error mapping
+function mapServiceErrorToHttpStatus(message) {
+  switch (message) {
+    case "Invalid id":
+    case "Provide either `order:[ids...]` or `{from,to}`":
+    case "from/to out of bounds":
+    case "Order does not match existing lessons":
+    case "Order does not match existing subHeadings":
+      return 400;
+    case "Topic content not found":
+    case "Lesson not found":
+      return 404;
+    case "Topic content is deleted":
+      return 409;
+    default:
+      return 500;
+  }
+}
+
+router.patch(
+  "/topic-contents/:contentId/lessons/:lessonId",
+  async (req, res) => {
+    try {
+      const { contentId, lessonId } = req.params;
+
+      // Optional: reject empty body early
+      if (!req.body || Object.keys(req.body).length === 0) {
+        return res.status(400).json({
+          message:
+            "Request body cannot be empty. Allowed fields: text, audio, video, subHeading",
+        });
+      }
+
+      const updatedLesson = await topicContentService.updateLessonContent(
+        contentId,
+        lessonId,
+        req.body
+      );
+
+      // Success: return the updated lesson object
+      return res.status(200).json(updatedLesson);
+    } catch (err) {
+      const msg = err?.message || "Server error";
+      const status = mapServiceErrorToHttpStatus(msg);
+      return res.status(status).json({ message: msg });
+    }
+  }
+);
+router.put("/topic-contents/:id/lessons/reorder", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { order } = req.body;
+
+    const result = await topicContentService.reorderLessons(id, order);
     res.status(200).json({
-      message: "Lesson info retrieved successfully",
-      data: lesson,
+      message: "Lessons reordered successfully",
+      data: result,
     });
-  } catch (error) {
-    const notFound = /Topic content not found|Lesson not found/i.test(error.message);
-    res.status(notFound ? 404 : 400).json({
-      message: "Failed to retrieve lesson info",
-      error: error.message,
+  } catch (err) {
+    res.status(400).json({
+      error: err.message || "Failed to reorder lessons",
     });
+  }
+});
+
+router.post("/topic-contents/:id/lessons", async (req, res) => {
+  try {
+    const topicContentId = req.params.id;
+
+    // Expect lesson data in body: { text, subHeading, audio, video }
+    const lessonPayload = {
+      text: req.body?.text,
+      subHeading: req.body?.subHeading, // array of addSubheading subdocs
+      audio: req.body?.audio,
+      video: req.body?.video,
+      // comments/reactions are intentionally not allowed on create
+    };
+
+    const { topicContent, lesson } = await topicContentService.addLessonInfo(
+      topicContentId,
+      lessonPayload
+    );
+
+    return res.status(201).json({
+      message: "Lesson added successfully",
+      topicContent,
+      lesson,
+    });
+  } catch (err) {
+    // Common Mongoose error guard
+    if (err?.name === "CastError") {
+      return res.status(400).json({ error: "Invalid id format" });
+    }
+    return res
+      .status(400)
+      .json({ error: err.message || "Failed to add lesson" });
+  }
+});
+
+// DELETE /api/topic-contents/:id/lessons/:lessonId
+router.delete("/topic-contents/:id/lessons/:lessonId", async (req, res) => {
+  try {
+    const { id: topicContentId, lessonId } = req.params;
+
+    const result = await topicContentService.deleteLessonInfo(topicContentId, lessonId);
+
+    return res.status(200).json({
+      message: "Lesson deleted successfully",
+      deletedLesson: result.deletedLesson,
+      topicContent: result.topicContent, // updated doc (lessons array now without the deleted one)
+    });
+  } catch (err) {
+    if (err?.name === "CastError") {
+      return res.status(400).json({ error: "Invalid id format" });
+    }
+    return res.status(400).json({ error: err.message || "Failed to delete lesson" });
   }
 });
 
