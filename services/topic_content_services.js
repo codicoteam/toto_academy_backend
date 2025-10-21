@@ -545,7 +545,8 @@ const getTopicContentsByTopicIdLeanLessons = async (topicId) => {
       throw new Error("No content found for the specified Topic ID");
     }
 
-    return results;
+    // ✅ Return only the first object in the array
+    return results[0];
   } catch (error) {
     throw new Error(error.message);
   }
@@ -692,8 +693,6 @@ async function reorderLessons(topicContentId, orderedLessonIds) {
   };
 }
 
-
-
 /**
  * Add a lesson to a topic_content document.
  * @param {string} topicContentId - The _id of the topic_content document
@@ -763,7 +762,7 @@ const deleteLessonInfo = async (topicContentId, lessonId) => {
     const deletedLesson = lesson.toObject();
 
     // Mongoose 6/7 way:
-    lesson.deleteOne();           // <- replace .remove()
+    lesson.deleteOne(); // <- replace .remove()
     await content.save();
 
     return { topicContent: content, deletedLesson };
@@ -797,5 +796,5 @@ module.exports = {
   updateLessonContent,
   reorderLessons,
   addLessonInfo,
-  deleteLessonInfo
+  deleteLessonInfo,
 };
