@@ -23,7 +23,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { id: admin._id, email: admin.email },
       "toto_academy_2025",
-      { expiresIn: "8h" }
+      { expiresIn: "96h" }
     );
 
     // Exclude password from returned admin object
@@ -50,7 +50,7 @@ router.post("/signup", async (req, res) => {
     const token = jwt.sign(
       { id: newAdmin._id, email: newAdmin.email },
       "toto_academy_2025",
-      { expiresIn: "8h" }
+      { expiresIn: "96h" }
     );
 
     res.status(201).json({

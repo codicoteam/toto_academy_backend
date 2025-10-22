@@ -22,7 +22,7 @@ router.post("/login", async (req, res) => {
         const token = jwt.sign(
             { id: student._id, email: student.email },
             "toto_academy_2025",
-            { expiresIn: "8h" }
+            { expiresIn: "96h" }
         );
 
         res.status(200).json({ message: "Login successful", token, data: student });
@@ -49,7 +49,7 @@ router.post("/loginbyphone", async (req, res) => {
         const token = jwt.sign(
             { id: student._id, phone: student.phone_number },
             "toto_academy_2025",
-            { expiresIn: "8h" }
+            { expiresIn: "96h" }
         );
 
         res.status(200).json({ message: "Login successful", token, data: student });
@@ -75,7 +75,7 @@ router.post("/signup", async (req, res) => {
             const token = jwt.sign(
                 { id: newStudent._id, email: newStudent.email },
                 "toto_academy_2025",
-                { expiresIn: "8h" }
+                { expiresIn: "96h" }
             );
 
             res.status(201).json({
@@ -92,7 +92,7 @@ router.post("/signup", async (req, res) => {
             const token = jwt.sign(
                 { id: newStudent._id, email: newStudent.email },
                 "toto_academy_2025",
-                { expiresIn: "8h" }
+                { expiresIn: "96h" }
             );
 
             res.status(201).json({
