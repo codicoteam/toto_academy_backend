@@ -11,6 +11,7 @@ const commentContentSystemRouter = require("./routers/comment_content_router.js"
 const subjectRouter = require("./routers/subject_router.js");
 const topicRouter = require("./routers/topic_in_subject.js");
 const topicContentRouter = require("./routers/topic_content_router.js");
+const endLessonQuestions = require("./routers/end_lesson_question_router.js");
 const comment_topic_content_route = require("./routers/comment_topic_content_router.js");
 const community_route = require("./routers/community_router.js");
 const message_community_route = require("./routers/message_community_router.js");
@@ -55,6 +56,7 @@ app.use("/api/v1/payment", paymentRouter);
 app.use("/api/v1/record_exam", recordExam);
 app.use("/api/v1/dashboards", dashboard);
 app.use("/api/v1/progress", progressRoutes);
+app.use("/api/v1/end_lesson_questions", endLessonQuestions);
 app.use("/api/v1/admin_student_chat", adminStudentChat);
 cron.schedule("0 0 * * *", async () => {
   console.log("Checking for expired withdrawals...");
