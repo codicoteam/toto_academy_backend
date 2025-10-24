@@ -14,34 +14,33 @@ class QuizService {
   // Get all quizzes (non-deleted)
   async getAllQuizzes() {
     try {
-      return await Quiz.find({ isDeleted: false }).populate("topic_content_id");
+      return await Quiz.find({ isDeleted: false }).populate("topic_content_id", "title");
     } catch (error) {
       throw new Error(`Error fetching quizzes: ${error.message}`);
     }
   }
-
   // Get quiz by ID
   async getQuizById(id) {
     try {
-      return await Quiz.findOne({ _id: id, isDeleted: false }).populate(
-        "topic_content_id"
-      );
+      return await Quiz.findOne({ _id: id, isDeleted: false }).populate("topic_content_id", "title");
     } catch (error) {
       throw new Error(`Error fetching quiz: ${error.message}`);
     }
   }
 
-  // Get quizzes by topic_content_id
-  async getQuizzesByContentId(topicContentId) {
-    try {
-      return await Quiz.find({
-        topic_content_id: topicContentId,
-        isDeleted: false,
-      }).populate("topic_content_id");
-    } catch (error) {
-      throw new Error(`Error fetching quizzes by content ID: ${error.message}`);
-    }
+
+// Get quizzes by topic_content_id (only populate the title)
+async getQuizzesByContentId(topicContentId) {
+  try {
+    return await Quiz.find({
+      topic_content_id: topicContentId,
+      isDeleted: false,
+    })
+      .populate("topic_content_id", "title"); // only populate the 'title' field
+  } catch (error) {
+    throw new Error(`Error fetching quizzes by content ID: ${error.message}`);
   }
+}
 
   // Update quiz by ID
   async updateQuiz(id, updateData) {
@@ -50,7 +49,7 @@ class QuizService {
         { _id: id, isDeleted: false },
         updateData,
         { new: true, runValidators: true }
-      ).populate("topic_content_id");
+      ).populate("topic_content_id", "title");
     } catch (error) {
       throw new Error(`Error updating quiz: ${error.message}`);
     }
