@@ -61,10 +61,14 @@ const deleteTopic = async (id) => {
   }
 };
 
-// Get topics by subject ID
+// Get topics by subject ID (exclude trashed)
 const getTopicsBySubjectId = async (subjectId) => {
   try {
-    const topics = await Topic.find({ subject: subjectId }).populate("subject");
+    const topics = await Topic.find({
+      subject: subjectId,
+      isDeleted: false, // exclude items in trash
+    }).populate("subject");
+
     if (!topics || topics.length === 0) {
       throw new Error("No topics found for this subject");
     }
@@ -74,13 +78,14 @@ const getTopicsBySubjectId = async (subjectId) => {
   }
 };
 
+
 // Service: topicService.js
 const getRandomFiveTopicsBySubjectId = async (subjectId) => {
   try {
     // Use aggregation with $match and $sample for random selection
     const topics = await Topic.aggregate([
       { $match: { subject: mongoose.Types.ObjectId(subjectId) } },
-      { $sample: { size: 5 } }  // Pick 5 random documents
+      { $sample: { size: 5 } }, // Pick 5 random documents
     ]);
 
     if (!topics || topics.length === 0) {
@@ -92,7 +97,6 @@ const getRandomFiveTopicsBySubjectId = async (subjectId) => {
     throw new Error(error.message);
   }
 };
-
 
 // Increment topicRequests by 1 for a subject
 const incrementTopiComentcRequests = async (id) => {
@@ -111,6 +115,58 @@ const incrementTopiComentcRequests = async (id) => {
   }
 };
 
+// Soft delete (move to trash)
+const softDeleteTopic = async (id) => {
+  try {
+    const topic = await Topic.findById(id);
+    if (!topic) throw new Error("Topic not found");
+
+    if (!topic.isDeleted) {
+      topic.isDeleted = true;
+      topic.deletedAt = new Date();
+      await topic.save();
+    }
+    return topic;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+// Restore from trash
+const restoreTopic = async (id) => {
+  try {
+    const topic = await Topic.findById(id);
+    if (!topic) throw new Error("Topic not found");
+
+    if (topic.isDeleted) {
+      topic.isDeleted = false;
+      topic.deletedAt = null;
+      await topic.save();
+    }
+    return topic;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+// View topics in trash
+const getDeletedTopics = async () => {
+  try {
+    return await Topic.find({ isDeleted: true }).populate("subject");
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+// (Optional) Permanently delete **from trash**
+const permanentDeleteTopic = async (id) => {
+  try {
+    return await Topic.findByIdAndDelete(id);
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
 module.exports = {
   createTopic,
   getAllTopics,
@@ -119,5 +175,9 @@ module.exports = {
   deleteTopic,
   getRandomFiveTopicsBySubjectId,
   getTopicsBySubjectId,
-  incrementTopiComentcRequests
+  incrementTopiComentcRequests,
+  softDeleteTopic,
+  restoreTopic,
+  getDeletedTopics,
+  permanentDeleteTopic, // optional
 };

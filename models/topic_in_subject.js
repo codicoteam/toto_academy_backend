@@ -26,25 +26,37 @@ const topicSchema = new mongoose.Schema(
     price: {
       type: Number,
       required: true,
-      default: 0, // Optional: Set default price
+      default: 0,
     },
     regularPrice: {
       type: Number,
       required: true,
-      default: 0, // Optional: Set default regular price
+      default: 0,
     },
     subscriptionPeriod: {
       type: String,
-      required: true, // Means by default it's not under subscription
+      required: true,
     },
     topicContentRequests: {
       type: Number,
-      default: 0, // start at 0
+      default: 0,
+    },
+    // --- Soft delete fields ---
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+      index: true,
     },
   },
   {
-    timestamps: true, // Adds createdAt and updatedAt fields
+    timestamps: true,
   }
 );
+
 
 module.exports = mongoose.model("Topic", topicSchema);

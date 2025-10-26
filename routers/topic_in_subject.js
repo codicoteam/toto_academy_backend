@@ -117,4 +117,46 @@ router.post("/:id/topic-content-request", async (req, res) => {
   }
 });
 
+
+// Move topic to trash (soft delete)
+router.patch("/trash/:id", authenticateToken, async (req, res) => {
+  try {
+    const topic = await topicService.softDeleteTopic(req.params.id);
+    res.status(200).json({ message: "Topic moved to trash", data: topic });
+  } catch (error) {
+    res.status(400).json({ message: "Failed to move to trash", error: error.message });
+  }
+});
+
+// Restore topic from trash
+router.patch("/trash/:id/restore", authenticateToken, async (req, res) => {
+  try {
+    const topic = await topicService.restoreTopic(req.params.id);
+    res.status(200).json({ message: "Topic restored", data: topic });
+  } catch (error) {
+    res.status(400).json({ message: "Failed to restore topic", error: error.message });
+  }
+});
+
+// View all topics in trash
+router.get("/trash", authenticateToken, async (req, res) => {
+  try {
+    const topics = await topicService.getDeletedTopics();
+    res.status(200).json({ message: "Trashed topics retrieved", data: topics });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch trashed topics", error: error.message });
+  }
+});
+
+// (Optional) Permanently delete a trashed topic
+router.delete("/trash/:id/permanent", authenticateToken, async (req, res) => {
+  try {
+    await topicService.permanentDeleteTopic(req.params.id);
+    res.status(200).json({ message: "Topic permanently deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to permanently delete topic", error: error.message });
+  }
+});
+
+
 module.exports = router;
