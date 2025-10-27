@@ -166,6 +166,24 @@ const permanentDeleteTopic = async (id) => {
   }
 };
 
+const setTopicVisibility = async (id, showTopic) => {
+  try {
+    const updatedTopic = await Topic.findByIdAndUpdate(
+      id,
+      { showTopic },
+      { new: true } // return the updated document
+    );
+
+    if (!updatedTopic) {
+      throw new Error("Topic not found");
+    }
+
+    return updatedTopic;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
 module.exports = {
   createTopic,
   getAllTopics,
@@ -179,4 +197,5 @@ module.exports = {
   restoreTopic,
   getDeletedTopics,
   permanentDeleteTopic, // optional
+  setTopicVisibility
 };
