@@ -1,195 +1,157 @@
+// services/admin_service.js
 const Admin = require("../models/admin_model");
+const bcrypt = require("bcryptjs");
 const twilioClient = require("twilio")(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 );
 
-// Service to create a new admin
+const OMIT_FIELDS = "-password -__v";
+
+// Helpers
+const toE164 = (num) => {
+  // If already +E.164, keep; else prefix + (basic)
+  return num.startsWith("+") ? num : `+${num.replace(/[^\d]/g, "")}`;
+};
+
+// Create a new admin
 const createAdmin = async (adminData) => {
-  try {
-    const existingAdmin = await Admin.findOne({ email: adminData.email });
-    if (existingAdmin) {
-      throw new Error("Email already exists");
-    }
-    const newAdmin = new Admin(adminData);
-    await newAdmin.save();
-    return newAdmin;
-  } catch (error) {
-    throw new Error(error.message);
-  }
+  const existingAdmin = await Admin.findOne({ email: adminData.email });
+  if (existingAdmin) throw new Error("Email already exists");
+
+  const newAdmin = new Admin(adminData);
+  const saved = await newAdmin.save();
+  return await Admin.findById(saved._id).select(OMIT_FIELDS);
 };
 
-
-// Service to get one admin by ID
+// Get one admin by ID
 const getAdminById = async (id) => {
-  try {
-    const admin = await Admin.findById(id);
-    if (!admin) {
-      throw new Error("Admin not found");
-    }
-    return admin;
-  } catch (error) {
-    throw new Error(error.message);
-  }
+  const admin = await Admin.findById(id).select(OMIT_FIELDS);
+  if (!admin) throw new Error("Admin not found");
+  return admin;
 };
-
-
-
 
 const getAllAdmins = async () => {
-  try {
-    return await Admin.find();
-  } catch (error) {
-    throw new Error(error.message);
-  }
+  return Admin.find().select(OMIT_FIELDS);
 };
 
 const getAdminByEmail = async (email) => {
-  try {
-    return await Admin.findOne({ email });
-  } catch (error) {
-    throw new Error(error.message);
-  }
+  return Admin.findOne({ email }).select(OMIT_FIELDS);
 };
 
-// Service to update an admin
+// Raw admin fetch (with password) for login only
+const getAdminForAuth = async (email) => {
+  return Admin.findOne({ email }); // includes password
+};
+
+// Update an admin (hash if password provided)
 const updateAdmin = async (id, updateData) => {
-  try {
-    const updatedAdmin = await Admin.findByIdAndUpdate(id, updateData, {
-      new: true,
-    });
-    if (!updatedAdmin) {
-      throw new Error("Admin not found");
-    }
-    return updatedAdmin;
-  } catch (error) {
-    throw new Error(error.message);
+  if (updateData.password) {
+    updateData.password = await bcrypt.hash(updateData.password, 12);
   }
+  const updated = await Admin.findByIdAndUpdate(id, updateData, {
+    new: true,
+    runValidators: true,
+  }).select(OMIT_FIELDS);
+  if (!updated) throw new Error("Admin not found");
+  return updated;
 };
 
-// Service to delete an admin
+// Delete an admin
 const deleteAdmin = async (id) => {
-  try {
-    const deletedAdmin = await Admin.findByIdAndDelete(id);
-    if (!deletedAdmin) {
-      throw new Error("Admin not found");
-    }
-    return deletedAdmin;
-  } catch (error) {
-    throw new Error(error.message);
-  }
+  const deleted = await Admin.findByIdAndDelete(id).select(OMIT_FIELDS);
+  if (!deleted) throw new Error("Admin not found");
+  return deleted;
 };
 
-// Generate and send password reset OTP via SMS using Twilio
+/**
+ * Password reset: Twilio Verify flow
+ * 1) generateAndSendPasswordResetOTP(email)
+ *    - creates a verification (sends SMS)
+ *    - sets resetPasswordExpires = now + 10m
+ * 2) verifyPasswordResetOTP(email, code)
+ *    - verificationChecks.create({ to, code })
+ *    - if approved: set resetPasswordVerifiedAt = now
+ * 3) resetPassword(email, newPassword)
+ *    - requires expires > now && verifiedAt within window
+ *    - update password and clear fields
+ */
+
+// Step 1: send OTP
 const generateAndSendPasswordResetOTP = async (email) => {
-  try {
-    // Check if email exists
-    const admin = await Admin.findOne({ email });
-    if (!admin) {
-      throw new Error("Email not found");
-    }
+  const admin = await Admin.findOne({ email });
+  if (!admin) throw new Error("Email not found");
 
-    // Format the phone number for Twilio
-    const formattedNumber = admin.contactNumber.startsWith("+")
-      ? admin.contactNumber
-      : `+${admin.contactNumber}`;
+  const to = toE164(admin.contactNumber);
 
-    // Send OTP via Twilio Verify
-    const verification = await twilioClient.verify.v2
-      .services(process.env.TWILIO_VERIFY_SERVICE_ID)
-      .verifications.create({ to: formattedNumber, channel: "sms" });
+  await twilioClient.verify.v2
+    .services(process.env.TWILIO_VERIFY_SERVICE_ID)
+    .verifications.create({ to, channel: "sms" });
 
-    // Store the verification SID instead of generating our own OTP
-    await Admin.findByIdAndUpdate(admin._id, {
-      resetPasswordVerificationSid: verification.sid,
-      resetPasswordExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-    });
+  admin.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  admin.resetPasswordVerifiedAt = undefined;
+  await admin.save();
 
-    return {
-      success: true,
-      message: "Password reset OTP sent to your phone number",
-    };
-  } catch (error) {
-    throw new Error(`Failed to send password reset OTP: ${error.message}`);
-  }
+  return { success: true, message: "Password reset OTP sent to your phone number" };
 };
 
-// Verify password reset OTP
+// Step 2: verify OTP
 const verifyPasswordResetOTP = async (email, otpCode) => {
-  try {
-    const admin = await Admin.findOne({
-      email,
-      resetPasswordExpires: { $gt: Date.now() },
-    });
+  const admin = await Admin.findOne({
+    email,
+    resetPasswordExpires: { $gt: Date.now() },
+  });
+  if (!admin) throw new Error("OTP expired or invalid request");
 
-    if (!admin) {
-      throw new Error("OTP expired or invalid request");
-    }
+  const to = toE164(admin.contactNumber);
 
-    // Format the phone number for Twilio
-    const formattedNumber = admin.contactNumber.startsWith("+")
-      ? admin.contactNumber
-      : `+${admin.contactNumber}`;
+  const verificationCheck = await twilioClient.verify.v2
+    .services(process.env.TWILIO_VERIFY_SERVICE_ID)
+    .verificationChecks.create({ to, code: otpCode });
 
-    // Verify the OTP with Twilio using the stored verification SID
-    const verificationCheck = await twilioClient.verify.v2
-      .services(process.env.TWILIO_VERIFY_SERVICE_ID)
-      .verificationChecks.create({
-        to: formattedNumber,
-        code: otpCode,
-        verificationSid: admin.resetPasswordVerificationSid,
-      });
-
-    if (verificationCheck.status === "approved") {
-      return {
-        success: true,
-        message: "OTP verified successfully",
-      };
-    } else {
-      throw new Error("Invalid OTP code");
-    }
-  } catch (error) {
-    throw new Error(`OTP verification failed: ${error.message}`);
+  if (verificationCheck.status !== "approved") {
+    throw new Error("Invalid OTP code");
   }
+
+  admin.resetPasswordVerifiedAt = new Date();
+  await admin.save();
+
+  return { success: true, message: "OTP verified successfully" };
 };
 
-// Reset password after OTP verification
-// Reset password after OTP verification (OTP verification already done in previous step)
+// Step 3: reset password (requires prior verification)
 const resetPassword = async (email, newPassword) => {
-  try {
-    const admin = await Admin.findOne({
-      email,
-      resetPasswordExpires: { $gt: Date.now() },
-    });
+  const admin = await Admin.findOne({
+    email,
+    resetPasswordExpires: { $gt: Date.now() },
+  });
+  if (!admin) throw new Error("OTP expired or invalid request");
 
-    if (!admin) {
-      throw new Error("OTP expired or invalid request");
-    }
-
-    // Update password and clear reset fields
-    await Admin.findByIdAndUpdate(admin._id, {
-      password: newPassword,
-      resetPasswordVerificationSid: undefined,
-      resetPasswordExpires: undefined,
-    });
-
-    return {
-      success: true,
-      message: "Password reset successfully",
-    };
-  } catch (error) {
-    throw new Error(`Password reset failed: ${error.message}`);
+  // Optional: ensure verification happened within the last 10 minutes
+  if (!admin.resetPasswordVerifiedAt) {
+    throw new Error("OTP not verified");
   }
+
+  admin.password = newPassword; // will be hashed by pre-save if we save() — but here we’ll hash explicitly to be safe
+  admin.password = await bcrypt.hash(admin.password, 12);
+
+  admin.resetPasswordExpires = undefined;
+  admin.resetPasswordVerifiedAt = undefined;
+
+  await admin.save();
+
+  return { success: true, message: "Password reset successfully" };
 };
 
 module.exports = {
   createAdmin,
   getAllAdmins,
   getAdminByEmail,
+  getAdminById,
+  getAdminForAuth,
   updateAdmin,
   deleteAdmin,
   generateAndSendPasswordResetOTP,
   verifyPasswordResetOTP,
-  resetPassword,  
-  getAdminById
+  resetPassword,
 };
