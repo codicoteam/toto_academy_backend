@@ -159,4 +159,22 @@ router.delete("/trash/:id/permanent", authenticateToken, async (req, res) => {
 });
 
 
+// Set visibility via body { showTopic: true|false }
+router.patch("/visibility/:id", authenticateToken, async (req, res) => {
+  try {
+    const { showTopic } = req.body;
+    if (typeof showTopic !== "boolean") {
+      return res.status(400).json({ message: "showTopic must be a boolean" });
+    }
+    const topic = await topicService.setTopicVisibility(req.params.id, showTopic);
+    res.status(200).json({
+      message: `Topic visibility set to ${showTopic}`,
+      data: topic,
+    });
+  } catch (error) {
+    res.status(400).json({ message: "Failed to update visibility", error: error.message });
+  }
+});
+
+
 module.exports = router;

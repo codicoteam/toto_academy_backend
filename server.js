@@ -23,6 +23,7 @@ const recordExam = require("./routers/record_exam_router.js");
 const dashboard = require("./routers/dashboard_router.js");
 const progressRoutes = require("./routers/student_topic_progress_router");
 const adminStudentChat = require("./routers/admin_student_chat_router.js");
+const homeBannersRoutes = require("./routers/homeBanner_routes.js");
 
 const walletService = require("./services/wallet_service");
 
@@ -58,6 +59,7 @@ app.use("/api/v1/dashboards", dashboard);
 app.use("/api/v1/progress", progressRoutes);
 app.use("/api/v1/end_lesson_questions", endLessonQuestions);
 app.use("/api/v1/admin_student_chat", adminStudentChat);
+app.use("/api/v1/home_banners", homeBannersRoutes);
 cron.schedule("0 0 * * *", async () => {
   console.log("Checking for expired withdrawals...");
   try {
