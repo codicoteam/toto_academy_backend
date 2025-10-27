@@ -66,7 +66,6 @@ const getTopicsBySubjectId = async (subjectId) => {
   try {
     const topics = await Topic.find({
       subject: subjectId,
-      isDeleted: false, // exclude items in trash
     }).populate("subject");
 
     if (!topics || topics.length === 0) {
