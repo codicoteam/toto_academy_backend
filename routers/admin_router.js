@@ -22,7 +22,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       { id: admin._id, email: admin.email, role: admin.role },
-      JWT_SECRET,
+      "toto_academy_2025",
       { expiresIn: JWT_EXPIRES_IN }
     );
 
@@ -40,7 +40,7 @@ router.post("/signup", async (req, res) => {
 
     const token = jwt.sign(
       { id: newAdmin._id, email: newAdmin.email, role: newAdmin.role },
-      JWT_SECRET,
+      "toto_academy_2025",
       { expiresIn: JWT_EXPIRES_IN }
     );
 
