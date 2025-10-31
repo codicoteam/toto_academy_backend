@@ -1,5 +1,5 @@
 const StudentTopicProgress = require("../models/student_topic_progress");
-const Topic = require("../models/topic_content");
+const Topic = require("../models/topic_content_model");
 // ---------- Helpers ----------
 function normalizeToday(d = new Date()) {
   const t = new Date(d);
@@ -11,7 +11,6 @@ function clampPct(n) {
   if (typeof n !== "number" || Number.isNaN(n)) return 0;
   return Math.max(0, Math.min(100, n));
 }
-
 function upsertLesson(progressDoc, payload) {
   if (!progressDoc.lessonsProgress) progressDoc.lessonsProgress = [];
 
@@ -22,12 +21,11 @@ function upsertLesson(progressDoc, payload) {
     totalGot,
     percentage,
     completed,
+    updatedAt,   // << NEW: allow external timestamp
   } = payload;
 
-  // Always store in schema's field name "LesoonTitle"
   const titleToStore = LesoonTitle ?? lessonTitle ?? "";
 
-  // Find by lessonid first (if present), else by title
   let idx = -1;
   if (lessonid) {
     idx = progressDoc.lessonsProgress.findIndex(
@@ -40,6 +38,8 @@ function upsertLesson(progressDoc, payload) {
     );
   }
 
+  const stamp = updatedAt ? new Date(updatedAt) : new Date();
+
   if (idx === -1) {
     progressDoc.lessonsProgress.push({
       lessonid: lessonid ?? undefined,
@@ -47,7 +47,7 @@ function upsertLesson(progressDoc, payload) {
       totalGot: typeof totalGot === "number" ? Math.max(0, totalGot) : 0,
       percentage: clampPct(percentage ?? 0),
       completed: !!completed,
-      updatedAt: new Date(),
+      updatedAt: stamp,
     });
   } else {
     const l = progressDoc.lessonsProgress[idx];
@@ -56,7 +56,7 @@ function upsertLesson(progressDoc, payload) {
     if (typeof totalGot === "number") l.totalGot = Math.max(0, totalGot);
     if (typeof percentage === "number") l.percentage = clampPct(percentage);
     if (typeof completed === "boolean") l.completed = completed;
-    l.updatedAt = new Date();
+    l.updatedAt = stamp;
     progressDoc.markModified(`lessonsProgress.${idx}`);
   }
 }
