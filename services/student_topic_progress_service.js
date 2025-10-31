@@ -1,8 +1,5 @@
 const StudentTopicProgress = require("../models/student_topic_progress");
-const Topic = require("../models/topic_in_subject");
-// Optional: only if you actually use TopicContent in getTopicProgress fallback
-// const TopicContent = require("../models/topic_content");
-
+const Topic = require("../models/topic_content");
 // ---------- Helpers ----------
 function normalizeToday(d = new Date()) {
   const t = new Date(d);
