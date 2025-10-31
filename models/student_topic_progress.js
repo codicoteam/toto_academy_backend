@@ -1,4 +1,38 @@
 const mongoose = require("mongoose");
+
+const lessonProgressSchema = new mongoose.Schema(
+  {
+    lessonid: {
+      type: String,
+      required: false,
+    },
+    LesoonTitle: {  
+      type: String,
+      required: true,
+    },
+    totalGot: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    percentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    completed: {
+      type: Boolean,
+      default: false,
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 const studentTopicProgressSchema = new mongoose.Schema(
   {
     student: {
@@ -11,14 +45,28 @@ const studentTopicProgressSchema = new mongoose.Schema(
       ref: "topic_content",
       required: true,
     },
-    // Add these fields to track progress within the topic content
-    currentLessonIndex: {
-      type: Number,
-      default: 0,
+
+    // Where the student currently is inside the topic
+    currentLessonIndex: { type: Number, default: 0 },
+    currentSubheadingIndex: { type: Number, default: 0 },
+
+    // Fine-grained per-lesson progress
+    lessonsProgress: {
+      type: [lessonProgressSchema],
+      default: [],
     },
-    currentSubheadingIndex: {
+
+    // Overall rollups (kept in sync from lessonsProgress)
+    overallTotalGot: {
       type: Number,
       default: 0,
+      min: 0,
+    },
+    overallPercentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
     },
 
     status: {
@@ -26,26 +74,16 @@ const studentTopicProgressSchema = new mongoose.Schema(
       enum: ["not_started", "in_progress", "completed"],
       default: "not_started",
     },
-    startedAt: {
-      type: Date,
-      default: null,
-    },
-    completedAt: {
-      type: Date,
-      default: null,
-    },
-    lastAccessed: {
-      type: Date,
-      default: null,
-    },
-    timeSpent: {
-      type: Number, // in minutes
-      default: 0,
-    },
-    minimumTimeRequirementMet: {
-      type: Boolean,
-      default: false,
-    },
+
+    startedAt: { type: Date, default: null },
+    completedAt: { type: Date, default: null },
+    lastAccessed: { type: Date, default: null },
+
+    // Topic-level time tracking
+    timeSpent: { type: Number, default: 0 }, // minutes
+    minimumTimeRequirementMet: { type: Boolean, default: false },
+
+    // Optional daily rollup
     dailyProgress: [
       {
         date: Date,
@@ -58,10 +96,12 @@ const studentTopicProgressSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-// Index for efficient queries
+
+// Efficient lookup
 studentTopicProgressSchema.index({ student: 1, topic: 1 }, { unique: true });
 
-module.exports = mongoose.model(
+
+mongoose.model(
   "StudentTopicProgress",
   studentTopicProgressSchema
 );

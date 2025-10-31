@@ -3,18 +3,20 @@ const router = express.Router();
 const progressService = require("../services/student_topic_progress_service");
 const { authenticateToken } = require("../middlewares/auth");
 
-// Update lesson progress
+// Update lesson *pointer* (indices). For scoring, use /progress.
 router.post("/lesson-progress", authenticateToken, async (req, res) => {
   try {
-    const { studentId, topicId, lessonIndex, subheadingIndex, lessonId } =
+    const { studentId, topicId, lessonIndex, subheadingIndex = 0, lessonId = null } =
       req.body;
+
     const progress = await progressService.updateLessonProgress(
       studentId,
       topicId,
-      lessonIndex,
-      subheadingIndex,
+      Number(lessonIndex),
+      Number(subheadingIndex),
       lessonId
     );
+
     res.status(200).json({
       message: "Lesson progress updated successfully",
       data: progress,
@@ -27,28 +29,58 @@ router.post("/lesson-progress", authenticateToken, async (req, res) => {
   }
 });
 
-// Update the existing progress route to accept lesson data
+// Update topic progress (time + optional lesson scoring and/or indices)
 router.post("/progress", authenticateToken, async (req, res) => {
   try {
     const {
       studentId,
       topicId,
-      timeSpent,
+      timeSpent = 0,
+
+      // location pointers
       lessonIndex,
       subheadingIndex,
-      lessonId,
+
+      // per-lesson scoring
+      lessonid,
+      lessonId,           // accepted alias
+      lessonTitle,        // preferred name
+      LesoonTitle,        // schema typo supported
+      totalGot,
+      percentage,
+      completed,
     } = req.body;
+
     const lessonData =
-      lessonIndex !== undefined
-        ? { lessonIndex, subheadingIndex, lessonId }
+      lessonIndex !== undefined ||
+      subheadingIndex !== undefined ||
+      lessonid !== undefined ||
+      lessonId !== undefined ||
+      lessonTitle !== undefined ||
+      LesoonTitle !== undefined ||
+      totalGot !== undefined ||
+      percentage !== undefined ||
+      completed !== undefined
+        ? {
+            lessonIndex,
+            subheadingIndex,
+            // choose lesson id if either provided
+            lessonid: lessonid ?? lessonId ?? null,
+            lessonTitle,
+            LesoonTitle,
+            totalGot,
+            percentage,
+            completed,
+          }
         : null;
 
     const progress = await progressService.updateTopicProgress(
       studentId,
       topicId,
-      timeSpent,
+      Number(timeSpent) || 0,
       lessonData
     );
+
     res.status(200).json({
       message: "Progress updated successfully",
       data: progress,
@@ -79,28 +111,21 @@ router.post("/complete", authenticateToken, async (req, res) => {
 });
 
 // Get progress for a specific topic
-router.get(
-  "/progress/:studentId/:topicId",
-  authenticateToken,
-  async (req, res) => {
-    try {
-      const { studentId, topicId } = req.params;
-      const progress = await progressService.getTopicProgress(
-        studentId,
-        topicId
-      );
-      res.status(200).json({
-        message: "Progress retrieved successfully",
-        data: progress,
-      });
-    } catch (error) {
-      res.status(400).json({
-        message: "Failed to retrieve progress",
-        error: error.message,
-      });
-    }
+router.get("/progress/:studentId/:topicId", authenticateToken, async (req, res) => {
+  try {
+    const { studentId, topicId } = req.params;
+    const progress = await progressService.getTopicProgress(studentId, topicId);
+    res.status(200).json({
+      message: "Progress retrieved successfully",
+      data: progress,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "Failed to retrieve progress",
+      error: error.message,
+    });
   }
-);
+});
 
 // Get all topics progress for a student
 router.get("/progress/:studentId", authenticateToken, async (req, res) => {
@@ -140,9 +165,7 @@ router.get("/completed/:studentId", authenticateToken, async (req, res) => {
 router.get("/inprogress/:studentId", authenticateToken, async (req, res) => {
   try {
     const { studentId } = req.params;
-    const inProgressTopics = await progressService.getInProgressTopics(
-      studentId
-    );
+    const inProgressTopics = await progressService.getInProgressTopics(studentId);
     res.status(200).json({
       message: "In-progress topics retrieved successfully",
       data: inProgressTopics,
@@ -159,10 +182,7 @@ router.get("/inprogress/:studentId", authenticateToken, async (req, res) => {
 router.post("/check-reset", authenticateToken, async (req, res) => {
   try {
     const { studentId, topicId } = req.body;
-    const result = await progressService.checkAndResetStaleProgress(
-      studentId,
-      topicId
-    );
+    const result = await progressService.checkAndResetStaleProgress(studentId, topicId);
     res.status(200).json({
       message: "Progress check completed",
       data: result,

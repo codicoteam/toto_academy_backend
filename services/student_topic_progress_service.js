@@ -1,8 +1,110 @@
 const StudentTopicProgress = require("../models/student_topic_progress");
 const Topic = require("../models/topic_in_subject");
+// Optional: only if you actually use TopicContent in getTopicProgress fallback
+// const TopicContent = require("../models/topic_content");
 
-// Start or update topic progress
-// Update progress with lesson tracking
+// ---------- Helpers ----------
+function normalizeToday(d = new Date()) {
+  const t = new Date(d);
+  t.setHours(0, 0, 0, 0);
+  return t;
+}
+
+function clampPct(n) {
+  if (typeof n !== "number" || Number.isNaN(n)) return 0;
+  return Math.max(0, Math.min(100, n));
+}
+
+function upsertLesson(progressDoc, payload) {
+  if (!progressDoc.lessonsProgress) progressDoc.lessonsProgress = [];
+
+  const {
+    lessonid = null,
+    lessonTitle, // preferred input name
+    LesoonTitle, // typo supported as fallback
+    totalGot,
+    percentage,
+    completed,
+  } = payload;
+
+  // Always store in schema's field name "LesoonTitle"
+  const titleToStore = LesoonTitle ?? lessonTitle ?? "";
+
+  // Find by lessonid first (if present), else by title
+  let idx = -1;
+  if (lessonid) {
+    idx = progressDoc.lessonsProgress.findIndex(
+      (l) => String(l.lessonid || "") === String(lessonid)
+    );
+  }
+  if (idx === -1 && titleToStore) {
+    idx = progressDoc.lessonsProgress.findIndex(
+      (l) => (l.LesoonTitle || "") === titleToStore
+    );
+  }
+
+  if (idx === -1) {
+    progressDoc.lessonsProgress.push({
+      lessonid: lessonid ?? undefined,
+      LesoonTitle: titleToStore,
+      totalGot: typeof totalGot === "number" ? Math.max(0, totalGot) : 0,
+      percentage: clampPct(percentage ?? 0),
+      completed: !!completed,
+      updatedAt: new Date(),
+    });
+  } else {
+    const l = progressDoc.lessonsProgress[idx];
+    if (lessonid) l.lessonid = lessonid;
+    if (titleToStore) l.LesoonTitle = titleToStore;
+    if (typeof totalGot === "number") l.totalGot = Math.max(0, totalGot);
+    if (typeof percentage === "number") l.percentage = clampPct(percentage);
+    if (typeof completed === "boolean") l.completed = completed;
+    l.updatedAt = new Date();
+    progressDoc.markModified(`lessonsProgress.${idx}`);
+  }
+}
+
+function recomputeRollups(progressDoc) {
+  const lessons = Array.isArray(progressDoc.lessonsProgress)
+    ? progressDoc.lessonsProgress
+    : [];
+
+  const overallTotalGot = lessons.reduce((s, l) => s + (l.totalGot || 0), 0);
+  const overallPercentage =
+    lessons.length > 0
+      ? lessons.reduce((s, l) => s + (l.percentage || 0), 0) / lessons.length
+      : 0;
+
+  progressDoc.overallTotalGot = Math.max(0, Math.floor(overallTotalGot));
+  progressDoc.overallPercentage =
+    Math.round(clampPct(overallPercentage) * 100) / 100;
+
+  const hasLessons = lessons.length > 0;
+  const allCompleted = hasLessons && lessons.every((l) => !!l.completed);
+  const anyProgress =
+    hasLessons &&
+    lessons.some((l) => (l.percentage || 0) > 0 || (l.totalGot || 0) > 0);
+
+  if (allCompleted) {
+    progressDoc.status = "completed";
+    if (!progressDoc.completedAt) progressDoc.completedAt = new Date();
+  } else if (anyProgress || (progressDoc.timeSpent || 0) > 0) {
+    if (progressDoc.status === "not_started") {
+      progressDoc.status = "in_progress";
+      progressDoc.startedAt = progressDoc.startedAt || new Date();
+    } else {
+      progressDoc.status = "in_progress";
+    }
+    progressDoc.completedAt = null;
+  } else {
+    progressDoc.status = "not_started";
+    progressDoc.completedAt = null;
+  }
+}
+
+// ---------- Service Methods ----------
+
+// Start or update topic progress (now supports lesson updates)
 const updateTopicProgress = async (
   studentId,
   topicId,
@@ -10,8 +112,7 @@ const updateTopicProgress = async (
   lessonData = null
 ) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = normalizeToday();
 
     let progress = await StudentTopicProgress.findOne({
       student: studentId,
@@ -25,49 +126,64 @@ const updateTopicProgress = async (
         status: "in_progress",
         startedAt: new Date(),
         lastAccessed: new Date(),
-        timeSpent: timeSpent,
+        timeSpent: timeSpent || 0,
       });
     } else {
       progress.lastAccessed = new Date();
-      progress.timeSpent += timeSpent;
+      progress.timeSpent += timeSpent || 0;
 
       if (progress.status === "not_started") {
         progress.status = "in_progress";
-        progress.startedAt = new Date();
+        progress.startedAt = progress.startedAt || new Date();
       }
     }
 
-    // Update lesson progress if provided
-    if (lessonData) {
-      progress.currentLessonIndex =
-        lessonData.lessonIndex || progress.currentLessonIndex;
-      progress.currentSubheadingIndex =
-        lessonData.subheadingIndex || progress.currentSubheadingIndex;
-
-      // Optional: Store reference to the actual lesson
-
+    // Optional lesson location pointers (indices)
+    if (
+      lessonData &&
+      (lessonData.lessonIndex !== undefined ||
+        lessonData.subheadingIndex !== undefined)
+    ) {
+      if (typeof lessonData.lessonIndex === "number")
+        progress.currentLessonIndex = lessonData.lessonIndex;
+      if (typeof lessonData.subheadingIndex === "number")
+        progress.currentSubheadingIndex = lessonData.subheadingIndex;
     }
 
-    // Update daily progress (existing code)
-    const dailyProgressIndex = progress.dailyProgress.findIndex(
-      (dp) => dp.date.getTime() === today.getTime()
-    );
+    // Per-lesson scoring/progress (NEW)
+    if (
+      lessonData &&
+      (lessonData.totalGot !== undefined ||
+        lessonData.percentage !== undefined ||
+        lessonData.completed !== undefined ||
+        lessonData.lessonTitle !== undefined ||
+        lessonData.LesoonTitle !== undefined ||
+        lessonData.lessonid !== undefined)
+    ) {
+      upsertLesson(progress, lessonData);
+    }
 
-    if (dailyProgressIndex === -1) {
+    // Daily progress
+    const i = progress.dailyProgress.findIndex(
+      (dp) => normalizeToday(dp.date).getTime() === today.getTime()
+    );
+    if (i === -1) {
       progress.dailyProgress.push({
         date: today,
-        timeSpent: timeSpent,
+        timeSpent: timeSpent || 0,
         completed: false,
       });
     } else {
-      progress.dailyProgress[dailyProgressIndex].timeSpent += timeSpent;
+      progress.dailyProgress[i].timeSpent += timeSpent || 0;
     }
 
     const uniqueDays = new Set(
-      progress.dailyProgress.map((dp) => dp.date.getTime())
+      progress.dailyProgress.map((dp) => normalizeToday(dp.date).getTime())
     ).size;
-
     progress.minimumTimeRequirementMet = uniqueDays >= 5;
+
+    // Recompute overall rollups from lessonsProgress
+    recomputeRollups(progress);
 
     await progress.save();
     return await progress.populate(["topic"]);
@@ -76,7 +192,7 @@ const updateTopicProgress = async (
   }
 };
 
-// Mark topic as completed
+// Mark topic as completed (keeps rollups consistent)
 const completeTopic = async (studentId, topicId) => {
   try {
     const progress = await StudentTopicProgress.findOne({
@@ -84,17 +200,17 @@ const completeTopic = async (studentId, topicId) => {
       topic: topicId,
     });
 
-    if (!progress) {
-      throw new Error("Progress record not found");
-    }
+    if (!progress) throw new Error("Progress record not found");
 
-    // Check if minimum time requirement is met
     if (!progress.minimumTimeRequirementMet) {
       throw new Error("Minimum 5-day requirement not met");
     }
 
     progress.status = "completed";
     progress.completedAt = new Date();
+
+    // Ensure rollups reflect completion flagging
+    recomputeRollups(progress);
 
     await progress.save();
     return await progress.populate("topic");
@@ -103,29 +219,28 @@ const completeTopic = async (studentId, topicId) => {
   }
 };
 
-// Get student's progress for a specific topic
-
-// Get progress with populated lesson info
+// Get progress with populated topic (and leave lessons as-is)
 const getTopicProgress = async (studentId, topicId) => {
   try {
     const progress = await StudentTopicProgress.findOne({
       student: studentId,
       topic: topicId,
-    })
-      .populate("topic")
-
+    }).populate("topic");
 
     if (!progress) {
       const topic = await Topic.findById(topicId);
-      // Also get the topic content to provide default lesson info
-      const topicContent = await TopicContent.findOne({ Topic: topicId });
+      // If you need topic content fallback, uncomment code and ensure you have the model:
+      // const topicContent = await TopicContent.findOne({ Topic: topicId });
 
       return {
         student: studentId,
-        topic: topic,
-        topicContent: topicContent,
+        topic,
+        // topicContent, // include if you fetched it
         currentLessonIndex: 0,
         currentSubheadingIndex: 0,
+        lessonsProgress: [],
+        overallTotalGot: 0,
+        overallPercentage: 0,
         status: "not_started",
         startedAt: null,
         completedAt: null,
@@ -136,14 +251,14 @@ const getTopicProgress = async (studentId, topicId) => {
       };
     }
 
-
     return progress;
   } catch (error) {
     throw new Error(error.message);
   }
 };
 
-// New method to update lesson progress specifically
+// Update the "pointer" to which lesson/subheading the student is on
+// (no scoring). If you want to also send scores, use updateTopicProgress.
 const updateLessonProgress = async (
   studentId,
   topicId,
@@ -174,8 +289,11 @@ const updateLessonProgress = async (
 
     if (progress.status === "not_started") {
       progress.status = "in_progress";
-      progress.startedAt = new Date();
+      progress.startedAt = progress.startedAt || new Date();
     }
+
+    // Keep rollups consistent (no changes to lessons here)
+    recomputeRollups(progress);
 
     await progress.save();
     return await progress.populate(["topic"]);
@@ -183,48 +301,39 @@ const updateLessonProgress = async (
     throw new Error(error.message);
   }
 };
-// Get all topics progress for a student
+
 const getAllTopicsProgress = async (studentId) => {
   try {
-    const progressRecords = await StudentTopicProgress.find({
-      student: studentId,
-    }).populate("topic");
-
-    return progressRecords;
+    return await StudentTopicProgress.find({ student: studentId }).populate(
+      "topic"
+    );
   } catch (error) {
     throw new Error(error.message);
   }
 };
 
-// Get completed topics for a student
 const getCompletedTopics = async (studentId) => {
   try {
-    const completedTopics = await StudentTopicProgress.find({
+    return await StudentTopicProgress.find({
       student: studentId,
       status: "completed",
     }).populate("topic");
-
-    return completedTopics;
   } catch (error) {
     throw new Error(error.message);
   }
 };
 
-// Get in-progress topics for a student
 const getInProgressTopics = async (studentId) => {
   try {
-    const inProgressTopics = await StudentTopicProgress.find({
+    return await StudentTopicProgress.find({
       student: studentId,
       status: "in_progress",
     }).populate("topic");
-
-    return inProgressTopics;
   } catch (error) {
     throw new Error(error.message);
   }
 };
 
-// Reset progress if student hasn't met the 5-day requirement in time
 const checkAndResetStaleProgress = async (studentId, topicId) => {
   try {
     const progress = await StudentTopicProgress.findOne({
@@ -237,12 +346,13 @@ const checkAndResetStaleProgress = async (studentId, topicId) => {
     }
 
     const now = new Date();
-    const lastAccessed = new Date(progress.lastAccessed);
+    const lastAccessed = new Date(
+      progress.lastAccessed || progress.updatedAt || now
+    );
     const daysSinceLastAccess = Math.floor(
       (now - lastAccessed) / (1000 * 60 * 60 * 24)
     );
 
-    // If it's been more than 7 days since last access and requirement not met, reset progress
     if (daysSinceLastAccess > 7 && !progress.minimumTimeRequirementMet) {
       await StudentTopicProgress.deleteOne({
         student: studentId,
