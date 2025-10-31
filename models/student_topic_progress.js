@@ -6,7 +6,7 @@ const lessonProgressSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
-    LesoonTitle: {  
+    LesoonTitle: {
       type: String,
       required: true,
     },
@@ -100,8 +100,8 @@ const studentTopicProgressSchema = new mongoose.Schema(
 // Efficient lookup
 studentTopicProgressSchema.index({ student: 1, topic: 1 }, { unique: true });
 
+const StudentTopicProgress =
+  mongoose.models.StudentTopicProgress ||
+  mongoose.model("StudentTopicProgress", studentTopicProgressSchema);
 
-mongoose.model(
-  "StudentTopicProgress",
-  studentTopicProgressSchema
-);
+module.exports = StudentTopicProgress;
