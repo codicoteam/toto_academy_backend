@@ -1,21 +1,53 @@
 const Student = require("../models/student_model");
+const StudentWallet = require("../models/wallet_model");
 const twilioClient = require("twilio")(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 );
 
 // Service to create a new student
+
 const createStudent = async (studentData) => {
   try {
-    // Check if email already exists
+    // Check if email exists
     const existingStudent = await Student.findOne({ email: studentData.email });
     if (existingStudent) {
       throw new Error("Email already exists");
     }
 
-    // Create and save the new student
+    // Create Student
     const newStudent = new Student(studentData);
     await newStudent.save();
+
+    // Always create wallet (never fail)
+    try {
+      await StudentWallet.create({
+        student: newStudent._id,
+        balance: 0,
+        currency: "USD",
+        deposits: [],
+        withdrawals: [],
+      });
+    } catch (walletError) {
+      console.error(
+        "Wallet creation failed but student was created:",
+        walletError.message
+      );
+
+      // FORCE CREATE a minimal fallback wallet
+      try {
+        await StudentWallet.create({
+          student: newStudent._id,
+          balance: 0,
+        });
+      } catch (fallbackError) {
+        console.error(
+          "Fallback wallet creation failed:",
+          fallbackError.message
+        );
+      }
+    }
+
     return newStudent;
   } catch (error) {
     throw new Error(error.message);
