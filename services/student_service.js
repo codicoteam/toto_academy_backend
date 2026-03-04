@@ -14,7 +14,6 @@ const createStudent = async (studentData) => {
     if (existingStudent) {
       throw new Error("Email already exists");
     }
-
     // Create Student
     const newStudent = new Student(studentData);
     await newStudent.save();
@@ -33,7 +32,6 @@ const createStudent = async (studentData) => {
         "Wallet creation failed but student was created:",
         walletError.message
       );
-
       // FORCE CREATE a minimal fallback wallet
       try {
         await StudentWallet.create({
