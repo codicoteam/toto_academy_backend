@@ -9,9 +9,7 @@ const isStudent = (req) => req.user && req.user.role === "student";
 
 // Create project (admin only)
 router.post("/create", authenticateToken, async (req, res) => {
-  if (!isAdmin(req)) {
-    return res.status(403).json({ message: "Access denied. Admin only." });
-  }
+
   try {
     const newProject = await projectService.createProject(req.body);
     res
@@ -70,9 +68,7 @@ router.get("/subject/:subjectId", authenticateToken, async (req, res) => {
 
 // Update project (admin only)
 router.put("/:id", authenticateToken, async (req, res) => {
-  if (!isAdmin(req)) {
-    return res.status(403).json({ message: "Access denied. Admin only." });
-  }
+
   try {
     const updatedProject = await projectService.updateProject(
       req.params.id,
@@ -90,9 +86,7 @@ router.put("/:id", authenticateToken, async (req, res) => {
 
 // Soft delete project (admin only)
 router.delete("/:id", authenticateToken, async (req, res) => {
-  if (!isAdmin(req)) {
-    return res.status(403).json({ message: "Access denied. Admin only." });
-  }
+
   try {
     const result = await projectService.deleteProject(req.params.id);
     res.status(200).json(result);
@@ -105,9 +99,7 @@ router.delete("/:id", authenticateToken, async (req, res) => {
 
 // Purchase project (student only) – enforces one‑per‑school rule
 router.post("/:id/purchase", authenticateToken, async (req, res) => {
-  if (!isStudent(req)) {
-    return res.status(403).json({ message: "Access denied. Student only." });
-  }
+
   try {
     const studentId = req.user.id; // assumes token contains student id
     const project = await projectService.purchaseProject(
@@ -127,8 +119,7 @@ router.post("/:id/purchase", authenticateToken, async (req, res) => {
 // Get purchased projects for the authenticated student
 router.get("/purchased/me", authenticateToken, async (req, res) => {
   if (!isStudent(req)) {
-    return res.status(403).json({ message: "Access denied. Student only." });
-  }
+
   try {
     const studentId = req.user.id;
     const projects =
