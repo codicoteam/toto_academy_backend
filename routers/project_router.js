@@ -118,7 +118,6 @@ router.post("/:id/purchase", authenticateToken, async (req, res) => {
 
 // Get purchased projects for the authenticated student
 router.get("/purchased/me", authenticateToken, async (req, res) => {
-  if (!isStudent(req)) {
 
   try {
     const studentId = req.user.id;
