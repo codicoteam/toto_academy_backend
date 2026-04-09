@@ -2,6 +2,10 @@ const mongoose = require("mongoose");
 
 const librarySchema = new mongoose.Schema(
   {
+    authorName: {
+      type: String,
+      required: true,
+    },
     title: {
       type: String,
       required: true,
@@ -55,7 +59,7 @@ const librarySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 module.exports = mongoose.model("books", librarySchema);
