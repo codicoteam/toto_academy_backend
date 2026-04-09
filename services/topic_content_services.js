@@ -201,58 +201,51 @@ const addReplyToComment = async (
 // Add or update a reaction
 const addReaction = async (contentId, lessonIndex, reactionData) => {
   try {
+    console.log("🔍 contentId:", contentId);
+    console.log("🔍 lessonIndex:", lessonIndex);
+    console.log("🔍 reactionData:", reactionData);
+
     const content = await TopicContent.findById(contentId);
+
+    console.log("📄 content found:", content ? "YES" : "NO");
+    console.log("📄 lessons count:", content?.lesson?.length);
+    console.log(
+      "📄 lesson at index:",
+      content?.lesson[lessonIndex] ? "EXISTS" : "NOT FOUND",
+    );
+
     if (!content) throw new Error("Topic content not found");
     if (!content.lesson[lessonIndex]) throw new Error("Lesson not found");
 
-    const lesson = content.lesson[lessonIndex];
+    const newReaction = {
+      userId: new mongoose.Types.ObjectId(reactionData.userId),
+      userType: reactionData.userType,
+      emoji: reactionData.emoji,
+      createdAt: new Date(),
+    };
 
-    const existingReactionIndex = lesson.reactions.findIndex(
-      (r) =>
-        r.userId.toString() === reactionData.userId.toString() &&
-        r.userType === reactionData.userType,
+    console.log("⚡ newReaction to push:", newReaction);
+
+    const updatedContent = await TopicContent.findByIdAndUpdate(
+      contentId,
+      {
+        $push: {
+          [`lesson.${lessonIndex}.reactions`]: newReaction,
+        },
+      },
+      { new: true, strict: false },
     );
 
-    let updatedContent;
-
-    if (existingReactionIndex !== -1) {
-      // ✅ Update existing reaction using positional operator
-      updatedContent = await TopicContent.findOneAndUpdate(
-        {
-          _id: contentId,
-          [`lesson.${lessonIndex}.reactions.userId`]: reactionData.userId,
-          [`lesson.${lessonIndex}.reactions.userType`]: reactionData.userType,
-        },
-        {
-          $set: {
-            [`lesson.${lessonIndex}.reactions.${existingReactionIndex}.emoji`]:
-              reactionData.emoji,
-          },
-        },
-        { new: true },
-      );
-    } else {
-      // ✅ Push new reaction directly via MongoDB operator
-      updatedContent = await TopicContent.findOneAndUpdate(
-        { _id: contentId },
-        {
-          $push: {
-            [`lesson.${lessonIndex}.reactions`]: {
-              userId: new mongoose.Types.ObjectId(reactionData.userId),
-              userType: reactionData.userType,
-              emoji: reactionData.emoji,
-              createdAt: new Date(),
-            },
-          },
-        },
-        { new: true },
-      );
-    }
+    console.log(
+      "✅ updatedContent reactions:",
+      updatedContent?.lesson[lessonIndex]?.reactions,
+    );
 
     if (!updatedContent) throw new Error("Failed to update reaction");
 
     return updatedContent.lesson[lessonIndex].reactions;
   } catch (error) {
+    console.error("❌ addReaction error:", error.message);
     throw new Error(error.message);
   }
 };
