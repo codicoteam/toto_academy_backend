@@ -199,7 +199,7 @@ const addReplyToComment = async (
 };
 
 // Add or update a reaction
-const addComment = async (contentId, lessonIndex, commentData) => {
+const addReaction = async (contentId, lessonIndex, reactionData) => {
   try {
     const content = await TopicContent.findById(contentId);
     if (!content) {
@@ -211,23 +211,23 @@ const addComment = async (contentId, lessonIndex, commentData) => {
     }
 
     const lesson = content.lesson[lessonIndex];
+    const existingReactionIndex = lesson.reactions.findIndex(
+      (r) =>
+        r.userId.toString() === reactionData.userId.toString() &&
+        r.userType === reactionData.userType,
+    );
 
-    // ✅ Push the new comment into the lesson's comments array
-    lesson.comments.push({
-      userId: new mongoose.Types.ObjectId(commentData.userId),
-      userType: commentData.userType,
-      text: commentData.text,
-      replies: [],
-      createdAt: new Date(),
-    });
+    if (existingReactionIndex !== -1) {
+      lesson.reactions[existingReactionIndex].emoji = reactionData.emoji;
+    } else {
+      lesson.reactions.push(reactionData);
+    }
 
-    // ✅ Mark the nested array as modified so Mongoose knows to save it
-    content.markModified(`lesson.${lessonIndex}.comments`);
+    // ✅ Tell Mongoose this nested array was mutated
+    content.markModified(`lesson.${lessonIndex}.reactions`);
 
     await content.save();
-
-    // ✅ Return the newly added comment (last one pushed)
-    return lesson.comments[lesson.comments.length - 1];
+    return lesson.reactions;
   } catch (error) {
     throw new Error(error.message);
   }

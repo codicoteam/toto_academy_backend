@@ -44,7 +44,7 @@ router.get("/by-topic/:topicId", authenticateToken, async (req, res) => {
     // You'll need to update the getTopicContentByTopicId service function
     // to filter out deleted items
     const contents = await topicContentService.getTopicContentByTopicId(
-      req.params.topicId,
+      req.params.topicId
     );
     res.status(200).json({
       message: "Topic contents retrieved successfully",
@@ -62,7 +62,7 @@ router.get("/by-topic/:topicId", authenticateToken, async (req, res) => {
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
     const content = await topicContentService.getTopicContentById(
-      req.params.id,
+      req.params.id
     );
     res.status(200).json({
       message: "Topic content retrieved successfully",
@@ -81,7 +81,7 @@ router.put("/update/:id", authenticateToken, async (req, res) => {
   try {
     const updatedContent = await topicContentService.updateTopicContent(
       req.params.id,
-      req.body,
+      req.body
     );
     res.status(200).json({
       message: "Topic content updated successfully",
@@ -115,7 +115,7 @@ router.delete("/delete/:id", authenticateToken, async (req, res) => {
 router.get("/by-topic/:topicId", authenticateToken, async (req, res) => {
   try {
     const contents = await topicContentService.getTopicContentByTopicId(
-      req.params.topicId,
+      req.params.topicId
     );
     res.status(200).json({
       message: "Topic contents retrieved successfully",
@@ -139,7 +139,7 @@ router.post(
       const comments = await topicContentService.addComment(
         contentId,
         parseInt(lessonIndex),
-        req.body,
+        req.body
       );
       res.status(201).json({
         message: "Comment added successfully",
@@ -151,7 +151,7 @@ router.post(
         error: error.message,
       });
     }
-  },
+  }
 );
 
 // Add a reply to a comment
@@ -165,7 +165,7 @@ router.post(
         contentId,
         parseInt(lessonIndex),
         parseInt(commentIndex),
-        req.body,
+        req.body
       );
       res.status(201).json({
         message: "Reply added successfully",
@@ -177,42 +177,32 @@ router.post(
         error: error.message,
       });
     }
-  },
+  }
 );
 
 // Add or update a reaction
 router.post(
-  "/:contentId/lesson/:lessonIndex/comment",
+  "/:contentId/lesson/:lessonIndex/reaction",
   authenticateToken,
   async (req, res) => {
     try {
       const { contentId, lessonIndex } = req.params;
-      const { userId, userType, text } = req.body;
-
-      if (!userId || !userType || !text) {
-        return res.status(400).json({
-          message: "userId, userType and text are required",
-          data: null,
-        });
-      }
-
-      const comment = await topicContentService.addComment(
+      const reactions = await topicContentService.addReaction(
         contentId,
         parseInt(lessonIndex),
-        { userId, userType, text },
+        req.body
       );
-
       res.status(201).json({
-        message: "Comment added successfully",
-        data: comment,
+        message: "Reaction added successfully",
+        data: reactions,
       });
     } catch (error) {
       res.status(400).json({
-        message: "Failed to add comment",
+        message: "Failed to add reaction",
         error: error.message,
       });
     }
-  },
+  }
 );
 
 // Get comments for a lesson
@@ -224,7 +214,7 @@ router.get(
       const { contentId, lessonIndex } = req.params;
       const comments = await topicContentService.getComments(
         contentId,
-        parseInt(lessonIndex),
+        parseInt(lessonIndex)
       );
       res.status(200).json({
         message: "Comments retrieved successfully",
@@ -236,7 +226,7 @@ router.get(
         error: error.message,
       });
     }
-  },
+  }
 );
 
 // Get reactions for a lesson
@@ -248,7 +238,7 @@ router.get(
       const { contentId, lessonIndex } = req.params;
       const reactions = await topicContentService.getReactions(
         contentId,
-        parseInt(lessonIndex),
+        parseInt(lessonIndex)
       );
       res.status(200).json({
         message: "Reactions retrieved successfully",
@@ -260,7 +250,7 @@ router.get(
         error: error.message,
       });
     }
-  },
+  }
 );
 
 // Move to trash
@@ -283,7 +273,7 @@ router.put("/trash/:id", authenticateToken, async (req, res) => {
 router.put("/restore/:id", authenticateToken, async (req, res) => {
   try {
     const restoredContent = await topicContentService.restoreFromTrash(
-      req.params.id,
+      req.params.id
     );
     res.status(200).json({
       message: "Topic content restored successfully",
@@ -338,7 +328,7 @@ router.delete(
       const updatedComments = await topicContentService.deleteComment(
         contentId,
         parseInt(lessonIndex),
-        parseInt(commentIndex),
+        parseInt(commentIndex)
       );
       res.status(200).json({
         message: "Comment deleted successfully",
@@ -350,7 +340,7 @@ router.delete(
         error: error.message,
       });
     }
-  },
+  }
 );
 
 // Delete a reaction from a lesson
@@ -363,7 +353,7 @@ router.delete(
       const updatedReactions = await topicContentService.deleteReaction(
         contentId,
         parseInt(lessonIndex),
-        parseInt(reactionIndex),
+        parseInt(reactionIndex)
       );
       res.status(200).json({
         message: "Reaction deleted successfully",
@@ -375,7 +365,7 @@ router.delete(
         error: error.message,
       });
     }
-  },
+  }
 );
 
 const { Types } = require("mongoose");
@@ -404,7 +394,7 @@ router.get(
 
       const lesson = await topicContentService.getLessonInfo(
         contentId,
-        lessonId,
+        lessonId
       );
       if (!lesson) {
         return res.status(404).json({
@@ -419,14 +409,14 @@ router.get(
       });
     } catch (error) {
       const notFound = /Topic content not found|Lesson not found/i.test(
-        error.message,
+        error.message
       );
       res.status(notFound ? 404 : 400).json({
         message: "Failed to retrieve lesson info",
         error: error.message,
       });
     }
-  },
+  }
 );
 
 // GET /topic-contents/lean
@@ -443,8 +433,9 @@ router.get("/topic-contents/lean", async (req, res) => {
 router.get("/topic-contents/topic/:topicId/lean", async (req, res) => {
   try {
     const { topicId } = req.params;
-    const data =
-      await topicContentService.getTopicContentsByTopicIdLeanLessons(topicId);
+    const data = await topicContentService.getTopicContentsByTopicIdLeanLessons(
+      topicId
+    );
     res.status(200).json(data);
   } catch (err) {
     const msg = err.message || "Server error";
@@ -506,7 +497,7 @@ router.patch(
       const updatedLesson = await topicContentService.updateLessonContent(
         contentId,
         lessonId,
-        req.body,
+        req.body
       );
 
       // Success: return the updated lesson object
@@ -516,7 +507,7 @@ router.patch(
       const status = mapServiceErrorToHttpStatus(msg);
       return res.status(status).json({ message: msg });
     }
-  },
+  }
 );
 router.put("/topic-contents/:id/lessons/reorder", async (req, res) => {
   try {
@@ -550,7 +541,7 @@ router.post("/topic-contents/:id/lessons", async (req, res) => {
 
     const { topicContent, lesson } = await topicContentService.addLessonInfo(
       topicContentId,
-      lessonPayload,
+      lessonPayload
     );
 
     return res.status(201).json({
@@ -574,10 +565,7 @@ router.delete("/topic-contents/:id/lessons/:lessonId", async (req, res) => {
   try {
     const { id: topicContentId, lessonId } = req.params;
 
-    const result = await topicContentService.deleteLessonInfo(
-      topicContentId,
-      lessonId,
-    );
+    const result = await topicContentService.deleteLessonInfo(topicContentId, lessonId);
 
     return res.status(200).json({
       message: "Lesson deleted successfully",
@@ -588,10 +576,9 @@ router.delete("/topic-contents/:id/lessons/:lessonId", async (req, res) => {
     if (err?.name === "CastError") {
       return res.status(400).json({ error: "Invalid id format" });
     }
-    return res
-      .status(400)
-      .json({ error: err.message || "Failed to delete lesson" });
+    return res.status(400).json({ error: err.message || "Failed to delete lesson" });
   }
 });
+
 
 module.exports = router;
