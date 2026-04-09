@@ -40,7 +40,7 @@ const getTopicContentById = async (id) => {
       for (const comment of lesson.comments) {
         const UserModel = comment.userType === "Admin" ? Admin : Student;
         const userData = await UserModel.findById(comment.userId).select(
-          "firstName lastName profilePicture email profile_picture"
+          "firstName lastName profilePicture email profile_picture",
         );
         comment.userId = userData;
       }
@@ -50,7 +50,7 @@ const getTopicContentById = async (id) => {
         for (const reply of comment.replies) {
           const UserModel = reply.userType === "Admin" ? Admin : Student;
           const userData = await UserModel.findById(reply.userId).select(
-            "firstName lastName profilePicture email profile_picture"
+            "firstName lastName profilePicture email profile_picture",
           );
           reply.userId = userData;
         }
@@ -60,7 +60,7 @@ const getTopicContentById = async (id) => {
       for (const reaction of lesson.reactions) {
         const UserModel = reaction.userType === "Admin" ? Admin : Student;
         const userData = await UserModel.findById(reaction.userId).select(
-          "firstName lastName profilePicture email profile_picture"
+          "firstName lastName profilePicture email profile_picture",
         );
         reaction.userId = userData;
       }
@@ -93,7 +93,7 @@ const getTopicContentByTopicId = async (topicId) => {
         for (const comment of lesson.comments) {
           const UserModel = comment.userType === "Admin" ? Admin : Student;
           const userData = await UserModel.findById(comment.userId).select(
-            "firstName lastName profilePicture email profile_picture"
+            "firstName lastName profilePicture email profile_picture",
           );
           comment.userId = userData;
         }
@@ -103,7 +103,7 @@ const getTopicContentByTopicId = async (topicId) => {
           for (const reply of comment.replies) {
             const UserModel = reply.userType === "Admin" ? Admin : Student;
             const userData = await UserModel.findById(reply.userId).select(
-              "firstName lastName profilePicture email profile_picture"
+              "firstName lastName profilePicture email profile_picture",
             );
             reply.userId = userData;
           }
@@ -112,7 +112,7 @@ const getTopicContentByTopicId = async (topicId) => {
         for (const reaction of lesson.reactions) {
           const UserModel = reaction.userType === "Admin" ? Admin : Student;
           const userData = await UserModel.findById(reaction.userId).select(
-            "firstName lastName profilePicture email profile_picture"
+            "firstName lastName profilePicture email profile_picture",
           );
           reaction.userId = userData;
         }
@@ -132,7 +132,7 @@ const updateTopicContent = async (id, updateData) => {
       updateData,
       {
         new: true,
-      }
+      },
     ).populate("Topic");
     if (!updatedContent) {
       throw new Error("Topic content not found");
@@ -172,7 +172,7 @@ const addReplyToComment = async (
   contentId,
   lessonIndex,
   commentIndex,
-  replyData
+  replyData,
 ) => {
   try {
     const content = await TopicContent.findById(contentId);
@@ -199,7 +199,7 @@ const addReplyToComment = async (
 };
 
 // Add or update a reaction
-const addReaction = async (contentId, lessonIndex, reactionData) => {
+const addComment = async (contentId, lessonIndex, commentData) => {
   try {
     const content = await TopicContent.findById(contentId);
     if (!content) {
@@ -211,22 +211,23 @@ const addReaction = async (contentId, lessonIndex, reactionData) => {
     }
 
     const lesson = content.lesson[lessonIndex];
-    const existingReactionIndex = lesson.reactions.findIndex(
-      (r) =>
-        r.userId.toString() === reactionData.userId.toString() &&
-        r.userType === reactionData.userType
-    );
 
-    if (existingReactionIndex !== -1) {
-      // Update existing reaction
-      lesson.reactions[existingReactionIndex].emoji = reactionData.emoji;
-    } else {
-      // Add new reaction
-      lesson.reactions.push(reactionData);
-    }
+    // ✅ Push the new comment into the lesson's comments array
+    lesson.comments.push({
+      userId: new mongoose.Types.ObjectId(commentData.userId),
+      userType: commentData.userType,
+      text: commentData.text,
+      replies: [],
+      createdAt: new Date(),
+    });
+
+    // ✅ Mark the nested array as modified so Mongoose knows to save it
+    content.markModified(`lesson.${lessonIndex}.comments`);
 
     await content.save();
-    return lesson.reactions;
+
+    // ✅ Return the newly added comment (last one pushed)
+    return lesson.comments[lesson.comments.length - 1];
   } catch (error) {
     throw new Error(error.message);
   }
@@ -273,11 +274,11 @@ const getComments = async (contentId, lessonIndex) => {
             const reply = replyDoc; // already plain object from .toObject() above
             reply.userId = await populateUser(reply.userType, reply.userId);
             return reply;
-          })
+          }),
         );
 
         return comment;
-      })
+      }),
     );
 
     return populatedComments;
@@ -300,10 +301,10 @@ const getReactions = async (contentId, lessonIndex) => {
         const reaction = reactionDoc.toObject();
         reaction.userId = await populateUser(
           reaction.userType,
-          reaction.userId
+          reaction.userId,
         );
         return reaction;
-      })
+      }),
     );
 
     return populatedReactions;
@@ -318,7 +319,7 @@ const moveToTrash = async (id) => {
     const deletedContent = await TopicContent.findByIdAndUpdate(
       id,
       { deleted: true, deletedAt: Date.now() },
-      { new: true }
+      { new: true },
     ).populate("Topic");
 
     if (!deletedContent) {
@@ -336,7 +337,7 @@ const restoreFromTrash = async (id) => {
     const restoredContent = await TopicContent.findByIdAndUpdate(
       id,
       { deleted: false, deletedAt: null },
-      { new: true }
+      { new: true },
     ).populate("Topic");
 
     if (!restoredContent) {
@@ -444,11 +445,11 @@ const getLessonInfo = async (contentId, lessonId) => {
             reply.userId = await populateUser(reply.userType, reply.userId);
           }
           return reply;
-        })
+        }),
       );
 
       return comment;
-    })
+    }),
   );
 
   const reactions = await Promise.all(
@@ -457,11 +458,11 @@ const getLessonInfo = async (contentId, lessonId) => {
       if (reaction?.userId) {
         reaction.userId = await populateUser(
           reaction.userType,
-          reaction.userId
+          reaction.userId,
         );
       }
       return reaction;
-    })
+    }),
   );
 
   return { ...base, comments, reactions };
@@ -622,13 +623,13 @@ const updateLessonContent = async (contentId, lessonId, payload = {}) => {
   }
   if (Object.keys(setOps).length === 0) {
     throw new Error(
-      "No valid fields to update. Allowed: text, audio, video, subHeading"
+      "No valid fields to update. Allowed: text, audio, video, subHeading",
     );
   }
 
   const res = await TopicContent.updateOne(
     { _id: contentId, deleted: false, "lesson._id": lessonId },
-    { $set: setOps }
+    { $set: setOps },
   );
 
   if (res.matchedCount === 0) {
@@ -666,7 +667,7 @@ async function reorderLessons(topicContentId, orderedLessonIds) {
   // Validate 1: same size
   if (existingIds.length !== incomingIds.length) {
     throw new Error(
-      "`order` must include every existing lesson id exactly once"
+      "`order` must include every existing lesson id exactly once",
     );
   }
   // Validate 2: same set
