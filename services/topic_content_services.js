@@ -201,51 +201,58 @@ const addReplyToComment = async (
 // Add or update a reaction
 const addReaction = async (contentId, lessonIndex, reactionData) => {
   try {
-    console.log("🔍 contentId:", contentId);
-    console.log("🔍 lessonIndex:", lessonIndex);
-    console.log("🔍 reactionData:", reactionData);
-
     const content = await TopicContent.findById(contentId);
-
-    console.log("📄 content found:", content ? "YES" : "NO");
-    console.log("📄 lessons count:", content?.lesson?.length);
-    console.log(
-      "📄 lesson at index:",
-      content?.lesson[lessonIndex] ? "EXISTS" : "NOT FOUND",
-    );
-
     if (!content) throw new Error("Topic content not found");
     if (!content.lesson[lessonIndex]) throw new Error("Lesson not found");
 
-    const newReaction = {
-      userId: new mongoose.Types.ObjectId(reactionData.userId),
-      userType: reactionData.userType,
-      emoji: reactionData.emoji,
-      createdAt: new Date(),
-    };
+    const lesson = content.lesson[lessonIndex];
 
-    console.log("⚡ newReaction to push:", newReaction);
+    // Check if this user already reacted
+    const existingReaction = lesson.reactions.find(
+      (r) =>
+        r.userId &&
+        r.userId.toString() === reactionData.userId.toString() &&
+        r.userType === reactionData.userType,
+    );
 
-    const updatedContent = await TopicContent.findByIdAndUpdate(
-      contentId,
-      {
-        $push: {
-          [`lesson.${lessonIndex}.reactions`]: newReaction,
+    let updatedContent;
+
+    if (existingReaction) {
+      // ✅ User already reacted — just update the emoji, don't add new
+      updatedContent = await TopicContent.findOneAndUpdate(
+        {
+          _id: contentId,
+          [`lesson.${lessonIndex}.reactions._id`]: existingReaction._id,
         },
-      },
-      { new: true, strict: false },
-    );
-
-    console.log(
-      "✅ updatedContent reactions:",
-      updatedContent?.lesson[lessonIndex]?.reactions,
-    );
+        {
+          $set: {
+            [`lesson.${lessonIndex}.reactions.$.emoji`]: reactionData.emoji,
+          },
+        },
+        { new: true },
+      );
+    } else {
+      // ✅ New reaction — push it
+      updatedContent = await TopicContent.findByIdAndUpdate(
+        contentId,
+        {
+          $push: {
+            [`lesson.${lessonIndex}.reactions`]: {
+              userId: new mongoose.Types.ObjectId(reactionData.userId),
+              userType: reactionData.userType,
+              emoji: reactionData.emoji,
+              createdAt: new Date(),
+            },
+          },
+        },
+        { new: true },
+      );
+    }
 
     if (!updatedContent) throw new Error("Failed to update reaction");
 
     return updatedContent.lesson[lessonIndex].reactions;
   } catch (error) {
-    console.error("❌ addReaction error:", error.message);
     throw new Error(error.message);
   }
 };
