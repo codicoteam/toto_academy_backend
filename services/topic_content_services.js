@@ -202,37 +202,60 @@ const addReplyToComment = async (
 const addReaction = async (contentId, lessonIndex, reactionData) => {
   try {
     const content = await TopicContent.findById(contentId);
-    if (!content) {
-      throw new Error("Topic content not found");
-    }
-
-    if (!content.lesson[lessonIndex]) {
-      throw new Error("Lesson not found");
-    }
+    if (!content) throw new Error("Topic content not found");
+    if (!content.lesson[lessonIndex]) throw new Error("Lesson not found");
 
     const lesson = content.lesson[lessonIndex];
+
     const existingReactionIndex = lesson.reactions.findIndex(
       (r) =>
         r.userId.toString() === reactionData.userId.toString() &&
         r.userType === reactionData.userType,
     );
 
+    let updatedContent;
+
     if (existingReactionIndex !== -1) {
-      lesson.reactions[existingReactionIndex].emoji = reactionData.emoji;
+      // ✅ Update existing reaction using positional operator
+      updatedContent = await TopicContent.findOneAndUpdate(
+        {
+          _id: contentId,
+          [`lesson.${lessonIndex}.reactions.userId`]: reactionData.userId,
+          [`lesson.${lessonIndex}.reactions.userType`]: reactionData.userType,
+        },
+        {
+          $set: {
+            [`lesson.${lessonIndex}.reactions.${existingReactionIndex}.emoji`]:
+              reactionData.emoji,
+          },
+        },
+        { new: true },
+      );
     } else {
-      lesson.reactions.push(reactionData);
+      // ✅ Push new reaction directly via MongoDB operator
+      updatedContent = await TopicContent.findOneAndUpdate(
+        { _id: contentId },
+        {
+          $push: {
+            [`lesson.${lessonIndex}.reactions`]: {
+              userId: new mongoose.Types.ObjectId(reactionData.userId),
+              userType: reactionData.userType,
+              emoji: reactionData.emoji,
+              createdAt: new Date(),
+            },
+          },
+        },
+        { new: true },
+      );
     }
 
-    // ✅ Tell Mongoose this nested array was mutated
-    content.markModified(`lesson.${lessonIndex}.reactions`);
+    if (!updatedContent) throw new Error("Failed to update reaction");
 
-    await content.save();
-    return lesson.reactions;
+    return updatedContent.lesson[lessonIndex].reactions;
   } catch (error) {
     throw new Error(error.message);
   }
 };
-
 // Get comments for a lesson
 // Assumes you have these models imported already
 // const TopicContent = require('...');
