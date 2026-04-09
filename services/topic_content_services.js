@@ -263,7 +263,7 @@ const addReaction = async (contentId, lessonIndex, reactionData) => {
 // const Student = require('...');
 
 const pickUserFields =
-  "firstName lastName profilePicture email profile_picture";
+  "firstName lastName profilePicture email profile_picture school";
 
 const getModelForUserType = (userType) =>
   userType === "Admin" ? Admin : Student;
